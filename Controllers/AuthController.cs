@@ -22,22 +22,48 @@ namespace backend.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+public async Task<IActionResult> Login([FromBody] LoginRequest request)
+{
+    var usuario = await _context.Usuarios
+        .Include(u => u.Rol)
+            .ThenInclude(r => r.Menus)
+        .FirstOrDefaultAsync(u => u.Usuario1 == request.Nombre && u.Clave == request.Clave);
+
+    if (usuario == null)
+        return Unauthorized(new { message = "Credenciales inválidas" });
+
+    if (!(usuario.Estado ?? false))
+        return Unauthorized(new { message = "Usuario inactivo, contacte al administrador" });
+
+    var token = GenerateJwtToken(usuario);
+
+    // Construir respuesta sin incluir la clave
+    var usuarioResponse = new
+    {
+        usuario.Id,
+        usuario.Usuario1,
+        usuario.Estado,
+        usuario.UltimoAcceso,
+        Rol = new
         {
-            var usuario = await _context.Usuarios
-                .FirstOrDefaultAsync(u => u.Nombre == request.Nombre && u.Clave == request.Clave);
-
-            if (usuario == null)
-                return Unauthorized(new { message = "Credenciales inválidas" });
-
-            // Validar estado
-            if (!usuario.Estado??false)
-                return Unauthorized(new { message = "Usuario inactivo, contacte al administrador" });
-            // Generar JWT
-            var token = GenerateJwtToken(usuario);
-
-            return Ok(new { token, usuario });
+            usuario.Rol?.Id,
+            usuario.Rol?.Nombre,
+            usuario.Rol?.Estado,
+            Menus = usuario.Rol?.Menus.Select(m => new {
+                m.Id,
+                m.Nombre,
+                m.Icono,
+                m.RutaAccion,
+                m.Tipo,
+                m.Orden,
+                m.PadreId
+            })
         }
+    };
+
+    return Ok(new { token, usuario = usuarioResponse });
+}
+
 
         private string GenerateJwtToken(Usuario usuario)
         {
@@ -46,7 +72,7 @@ namespace backend.Controllers
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, usuario.Nombre),
+                new Claim(JwtRegisteredClaimNames.Sub, usuario.Usuario1 ?? string.Empty),
                 new Claim("id", usuario.Id.ToString()),
                 new Claim("estado", usuario.Estado.ToString())
             };
