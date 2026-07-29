@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 
 namespace backend.Models;
-
+//modelo de rol
 public partial class Rol
 {
     public int Id { get; set; }
