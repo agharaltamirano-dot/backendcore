@@ -17,12 +17,15 @@ public partial class TransporteContext : DbContext
 
     public virtual DbSet<Menu> Menus { get; set; }
 
+    public virtual DbSet<PuntoVentum> PuntoVenta { get; set; }
+
     public virtual DbSet<Rol> Rols { get; set; }
 
     public virtual DbSet<Usuario> Usuarios { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseNpgsql("Name=TransporteDb");
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=transporte;Username=postgres;Password=postgres");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,6 +59,24 @@ public partial class TransporteContext : DbContext
                 .HasForeignKey(d => d.PadreId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("menus_padre_id_fkey");
+        });
+
+        modelBuilder.Entity<PuntoVentum>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("punto_venta_pkey");
+
+            entity.ToTable("punto_venta");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Direccion)
+                .HasMaxLength(100)
+                .HasColumnName("direccion");
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(30)
+                .HasColumnName("nombre");
+            entity.Property(e => e.Telefono)
+                .HasMaxLength(50)
+                .HasColumnName("telefono");
         });
 
         modelBuilder.Entity<Rol>(entity =>
@@ -95,11 +116,14 @@ public partial class TransporteContext : DbContext
             entity.ToTable("usuario");
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Acceso)
+                .HasDefaultValue(true)
+                .HasColumnName("acceso");
             entity.Property(e => e.Clave)
                 .HasMaxLength(100)
                 .HasColumnName("clave");
             entity.Property(e => e.Estado).HasColumnName("estado");
-            entity.Property(e => e.Acceso).HasColumnName("acceso");
+            entity.Property(e => e.PuntoVentaId).HasColumnName("punto_venta_id");
             entity.Property(e => e.RolId).HasColumnName("rol_id");
             entity.Property(e => e.UltimoAcceso)
                 .HasMaxLength(50)
@@ -107,6 +131,10 @@ public partial class TransporteContext : DbContext
             entity.Property(e => e.Usuario1)
                 .HasMaxLength(50)
                 .HasColumnName("usuario");
+
+            entity.HasOne(d => d.PuntoVenta).WithMany(p => p.Usuarios)
+                .HasForeignKey(d => d.PuntoVentaId)
+                .HasConstraintName("fk_usuario_punto_venta");
 
             entity.HasOne(d => d.Rol).WithMany(p => p.Usuarios)
                 .HasForeignKey(d => d.RolId)

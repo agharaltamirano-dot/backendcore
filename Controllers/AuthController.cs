@@ -21,12 +21,13 @@ namespace backend.Controllers
             _config = config;
         }
 
-        [HttpPost("login")]
+    [HttpPost("login")]
 public async Task<IActionResult> Login([FromBody] LoginRequest request)
 {
     var usuario = await _context.Usuarios
         .Include(u => u.Rol)
             .ThenInclude(r => r.Menus)
+        .Include(u => u.PuntoVenta) // 👈 incluir punto de venta
         .FirstOrDefaultAsync(u => u.Usuario1 == request.Nombre && u.Clave == request.Clave);
 
     if (usuario == null)
@@ -35,9 +36,15 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
     if (!(usuario.Estado ?? false))
         return Unauthorized(new { message = "Usuario inactivo, contacte al administrador" });
 
+if (!(usuario.Acceso ?? false))
+        return Unauthorized(new { message = "Usuario sin acceso, contacte al administrador" });
+
+    // Actualizar último acceso
+    usuario.UltimoAcceso = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+    await _context.SaveChangesAsync();
+
     var token = GenerateJwtToken(usuario);
 
-    // Construir respuesta sin incluir la clave
     var usuarioResponse = new
     {
         usuario.Id,
@@ -58,11 +65,19 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
                 m.Orden,
                 m.PadreId
             })
+        },
+        PuntoVenta = usuario.PuntoVenta == null ? null : new
+        {
+            usuario.PuntoVenta.Id,
+            usuario.PuntoVenta.Nombre,
+            usuario.PuntoVenta.Direccion,
+            usuario.PuntoVenta.Telefono
         }
     };
 
     return Ok(new { token, usuario = usuarioResponse });
 }
+
 
 
         private string GenerateJwtToken(Usuario usuario)

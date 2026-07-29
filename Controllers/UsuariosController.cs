@@ -16,7 +16,7 @@ namespace backend.Controllers
             _context = context;
         }
 
-       // GET: api/usuarios
+  // GET: api/usuarios
 [HttpGet]
 public async Task<ActionResult<IEnumerable<object>>> GetUsuarios()
 {
@@ -24,6 +24,7 @@ public async Task<ActionResult<IEnumerable<object>>> GetUsuarios()
         .Where(u => u.Estado == true) // solo activos
         .Include(u => u.Rol)
             .ThenInclude(r => r.Menus)
+        .Include(u => u.PuntoVenta) // 👈 incluir punto de venta
         .Select(u => new
         {
             u.Id,
@@ -46,9 +47,17 @@ public async Task<ActionResult<IEnumerable<object>>> GetUsuarios()
                     Orden = m.Orden ?? 0,
                     PadreId = m.PadreId
                 })
+            },
+            PuntoVenta = u.PuntoVenta == null ? null : new
+            {
+                u.PuntoVenta.Id,
+                Nombre = u.PuntoVenta.Nombre ?? string.Empty,
+                Direccion = u.PuntoVenta.Direccion ?? string.Empty,
+                Telefono = u.PuntoVenta.Telefono ?? string.Empty
             }
         })
         .ToListAsync();
+    usuarios.Reverse(); // Invertir el orden de los usuarios
 
     return Ok(usuarios);
 }
@@ -79,28 +88,52 @@ public async Task<ActionResult<IEnumerable<object>>> GetUsuarios()
         }
 
         // PUT: api/usuarios/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutUsuario(int id, Usuario usuario)
-        {
-            Console.WriteLine($"-----------------------Usuario llegando---MODIFICAR--------------------------------: {JsonSerializer.Serialize(usuario)}----------id-{id}");
-            if (id != usuario.Id)
-                return BadRequest();
+[HttpPut("{id}")]
+public async Task<IActionResult> PutUsuario(int id, Usuario usuario)
+{
+    Console.WriteLine($"-----------------------Usuario llegando---MODIFICAR--------------------------------: {JsonSerializer.Serialize(usuario)}----------id-{id}");
 
-            _context.Entry(usuario).State = EntityState.Modified;
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Usuarios.Any(e => e.Id == id))
-                    return NotFound();
-                else
-                    throw;
-            }
+    var usuarioExistente = await _context.Usuarios.FindAsync(id);
+    if (usuarioExistente == null)
+        return NotFound();
 
-            return NoContent();
-        }
+    // Solo actualizamos lo que llega distinto de null
+    if (usuario.Usuario1 != null)
+        usuarioExistente.Usuario1 = usuario.Usuario1;
+
+    if (usuario.Clave != null)
+        usuarioExistente.Clave = usuario.Clave;
+
+    if (usuario.Estado != null)
+        usuarioExistente.Estado = usuario.Estado;
+
+    if (usuario.UltimoAcceso != null)
+        usuarioExistente.UltimoAcceso = usuario.UltimoAcceso;
+
+    if (usuario.RolId != null)
+        usuarioExistente.RolId = usuario.RolId;
+
+    if (usuario.Acceso != null)
+        usuarioExistente.Acceso = usuario.Acceso;
+
+    if (usuario.PuntoVentaId != null)
+        usuarioExistente.PuntoVentaId = usuario.PuntoVentaId;
+
+    try
+    {
+        await _context.SaveChangesAsync();
+    }
+    catch (DbUpdateConcurrencyException)
+    {
+        if (!_context.Usuarios.Any(e => e.Id == id))
+            return NotFound();
+        else
+            throw;
+    }
+
+    return NoContent();
+}
+
 
         // DELETE: api/usuarios/5
         [HttpDelete("{id}")]

@@ -13,11 +13,15 @@ public partial class Usuario
 
     public bool? Estado { get; set; }
 
-    public bool? Acceso { get; set; }
-
     public string? UltimoAcceso { get; set; }
 
     public int? RolId { get; set; }
+
+    public bool? Acceso { get; set; }
+
+    public int? PuntoVentaId { get; set; }
+
+    public virtual PuntoVentum? PuntoVenta { get; set; }
 
     public virtual Rol? Rol { get; set; }
 }
