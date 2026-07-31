@@ -67,6 +67,7 @@ public async Task<ActionResult<IEnumerable<object>>> GetUsuarios()
         public async Task<ActionResult<Usuario>> GetUsuario(int id)
         {
             var usuario = await _context.Usuarios
+            .Where(c => c.Estado == true)
                 .Include(u => u.Rol)
                     .ThenInclude(r => r.Menus)
                 .FirstOrDefaultAsync(u => u.Id == id);

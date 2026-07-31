@@ -19,11 +19,14 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Horario>>> GetHorarios()
         {
-            return await _context.Horarios
+            var horarios = await _context.Horarios
+            .Where(c => c.Estado == true)
                 .Include(h => h.Ruta)
                 .Include(h => h.Vehiculo)
                 .ThenInclude(v => v.Conductor)
                 .ToListAsync();
+            horarios.Reverse(); // Invertir el orden de los horarios
+            return horarios;
         }
 
         // GET: api/horarios/5

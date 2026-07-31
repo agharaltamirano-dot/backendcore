@@ -19,11 +19,14 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Rutum>>> GetRutas()
         {
-            return await _context.Ruta
+            var rutas = await _context.Ruta
+            .Where(c => c.Estado == true)
                 .Include(r => r.Origen)
                 .Include(r => r.Destino)
                 .Include(r => r.Horarios)
                 .ToListAsync();
+                rutas.Reverse(); // Invertir el orden de las rutas
+            return rutas;
         }
 
         // GET: api/rutas/5

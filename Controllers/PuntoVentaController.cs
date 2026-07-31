@@ -21,6 +21,7 @@ namespace backend.Controllers
         {
             // Solo puntos de venta, sin usuarios
             var puntosVenta = await _context.PuntoVenta
+            // .Where(p => p.Estado == true)
                 .Select(p => new {
                     p.Id,
                     p.Nombre,
@@ -28,7 +29,7 @@ namespace backend.Controllers
                     p.Telefono
                 })
                 .ToListAsync();
-
+            puntosVenta.Reverse(); // Invertir el orden de los puntos de venta
             return Ok(puntosVenta);
         }
 

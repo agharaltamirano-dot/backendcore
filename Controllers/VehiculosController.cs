@@ -20,10 +20,12 @@ namespace backend.Controllers
         public async Task<ActionResult<IEnumerable<Vehiculo>>> GetVehiculos()
         {
             return await _context.Vehiculos
+            .Where(c => c.Estado == true)
                 .Include(v => v.Conductor)
                 .Include(v => v.Propietario)
                 .Include(v => v.Asientos)
-                .ToListAsync();
+                .ToListAsync().ContinueWith(t => { t.Result.Reverse(); return t.Result; }); // Invertir el orden de los vehículos
+
         }
 
         // GET: api/vehiculos/5
