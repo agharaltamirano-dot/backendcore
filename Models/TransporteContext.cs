@@ -17,11 +17,23 @@ public partial class TransporteContext : DbContext
 
     public virtual DbSet<Asiento> Asientos { get; set; }
 
+    public virtual DbSet<Cliente> Clientes { get; set; }
+
     public virtual DbSet<Conductor> Conductors { get; set; }
+
+    public virtual DbSet<Destino> Destinos { get; set; }
+
+    public virtual DbSet<DistribucionAsiento> DistribucionAsientos { get; set; }
+
+    public virtual DbSet<Encomiendum> Encomienda { get; set; }
+
+    public virtual DbSet<Envio> Envios { get; set; }
 
     public virtual DbSet<Horario> Horarios { get; set; }
 
     public virtual DbSet<Menu> Menus { get; set; }
+
+    public virtual DbSet<Pasaje> Pasajes { get; set; }
 
     public virtual DbSet<PuntoVentum> PuntoVenta { get; set; }
 
@@ -43,18 +55,41 @@ public partial class TransporteContext : DbContext
 
         modelBuilder.Entity<Asiento>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("asientos_pkey");
+            entity.HasKey(e => e.Id).HasName("asiento_pkey");
 
-            entity.ToTable("asientos");
+            entity.ToTable("asiento");
 
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Cantidad).HasColumnName("cantidad");
-            entity.Property(e => e.Esminibus).HasColumnName("esminibus");
+            entity.Property(e => e.Columna).HasColumnName("columna");
+            entity.Property(e => e.DistribucionId).HasColumnName("distribucion_id");
             entity.Property(e => e.Estado).HasColumnName("estado");
-            entity.Property(e => e.Filas).HasColumnName("filas");
-            entity.Property(e => e.Nombre)
+            entity.Property(e => e.Fila).HasColumnName("fila");
+            entity.Property(e => e.Numero).HasColumnName("numero");
+
+            entity.HasOne(d => d.Distribucion).WithMany(p => p.Asientos)
+                .HasForeignKey(d => d.DistribucionId)
+                .HasConstraintName("asiento_distribucion_id_fkey");
+        });
+
+        modelBuilder.Entity<Cliente>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("cliente_pkey");
+
+            entity.ToTable("cliente");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Ci)
                 .HasMaxLength(20)
-                .HasColumnName("nombre");
+                .HasColumnName("ci");
+            entity.Property(e => e.Estado)
+                .HasDefaultValue(true)
+                .HasColumnName("estado");
+            entity.Property(e => e.NombreCompleto)
+                .HasMaxLength(50)
+                .HasColumnName("nombre_completo");
+            entity.Property(e => e.Telefono)
+                .HasMaxLength(20)
+                .HasColumnName("telefono");
         });
 
         modelBuilder.Entity<Conductor>(entity =>
@@ -82,6 +117,110 @@ public partial class TransporteContext : DbContext
                 .HasColumnName("telefono");
         });
 
+        modelBuilder.Entity<Destino>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("destino_pkey");
+
+            entity.ToTable("destino");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.EsOrigen).HasColumnName("es_origen");
+            entity.Property(e => e.Orden).HasColumnName("orden");
+            entity.Property(e => e.PuntoVentaId).HasColumnName("punto_venta_id");
+            entity.Property(e => e.RutaId).HasColumnName("ruta_id");
+
+            entity.HasOne(d => d.PuntoVenta).WithMany(p => p.Destinos)
+                .HasForeignKey(d => d.PuntoVentaId)
+                .HasConstraintName("destino_punto_venta_id_fkey");
+
+            entity.HasOne(d => d.Ruta).WithMany(p => p.Destinos)
+                .HasForeignKey(d => d.RutaId)
+                .HasConstraintName("destino_ruta_id_fkey");
+        });
+
+        modelBuilder.Entity<DistribucionAsiento>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("distribucion_asiento_pkey");
+
+            entity.ToTable("distribucion_asiento");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Estado).HasColumnName("estado");
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(20)
+                .HasColumnName("nombre");
+        });
+
+        modelBuilder.Entity<Encomiendum>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("encomienda_pkey");
+
+            entity.ToTable("encomienda");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ClienteConsignatarioId).HasColumnName("cliente_consignatario_id");
+            entity.Property(e => e.ClienteRemitenteId).HasColumnName("cliente_remitente_id");
+            entity.Property(e => e.Contenido)
+                .HasMaxLength(150)
+                .HasColumnName("contenido");
+            entity.Property(e => e.Estado).HasColumnName("estado");
+            entity.Property(e => e.FechaEntrega)
+                .HasMaxLength(20)
+                .HasColumnName("fecha_entrega");
+            entity.Property(e => e.FechaRecepcion)
+                .HasMaxLength(20)
+                .HasColumnName("fecha_recepcion");
+            entity.Property(e => e.Monto).HasColumnName("monto");
+            entity.Property(e => e.Numero)
+                .HasMaxLength(20)
+                .HasColumnName("numero");
+            entity.Property(e => e.UsuarioAnulaId).HasColumnName("usuario_anula_id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+
+            entity.HasOne(d => d.ClienteConsignatario).WithMany(p => p.EncomiendumClienteConsignatarios)
+                .HasForeignKey(d => d.ClienteConsignatarioId)
+                .HasConstraintName("encomienda_cliente_consignatario_id_fkey");
+
+            entity.HasOne(d => d.ClienteRemitente).WithMany(p => p.EncomiendumClienteRemitentes)
+                .HasForeignKey(d => d.ClienteRemitenteId)
+                .HasConstraintName("encomienda_cliente_remitente_id_fkey");
+
+            entity.HasOne(d => d.UsuarioAnula).WithMany(p => p.EncomiendumUsuarioAnulas)
+                .HasForeignKey(d => d.UsuarioAnulaId)
+                .HasConstraintName("encomienda_usuario_anula_id_fkey");
+
+            entity.HasOne(d => d.Usuario).WithMany(p => p.EncomiendumUsuarios)
+                .HasForeignKey(d => d.UsuarioId)
+                .HasConstraintName("encomienda_usuario_id_fkey");
+        });
+
+        modelBuilder.Entity<Envio>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("envio_pkey");
+
+            entity.ToTable("envio");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ConductorId).HasColumnName("conductor_id");
+            entity.Property(e => e.EncomiendaId).HasColumnName("encomienda_id");
+            entity.Property(e => e.Fecha)
+                .HasMaxLength(20)
+                .HasColumnName("fecha");
+            entity.Property(e => e.HorarioId).HasColumnName("horario_id");
+
+            entity.HasOne(d => d.Conductor).WithMany(p => p.Envios)
+                .HasForeignKey(d => d.ConductorId)
+                .HasConstraintName("envio_conductor_id_fkey");
+
+            entity.HasOne(d => d.Encomienda).WithMany(p => p.Envios)
+                .HasForeignKey(d => d.EncomiendaId)
+                .HasConstraintName("envio_encomienda_id_fkey");
+
+            entity.HasOne(d => d.Horario).WithMany(p => p.Envios)
+                .HasForeignKey(d => d.HorarioId)
+                .HasConstraintName("envio_horario_id_fkey");
+        });
+
         modelBuilder.Entity<Horario>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("horario_pkey");
@@ -103,12 +242,10 @@ public partial class TransporteContext : DbContext
 
             entity.HasOne(d => d.Ruta).WithMany(p => p.Horarios)
                 .HasForeignKey(d => d.RutaId)
-                .OnDelete(DeleteBehavior.Restrict)//tambien puede tener estos valores: Cascade(borra tambien los registros donde se usa esta clave foranea), SetNull(inserta null en la fk), Restrict(no permite borrar padre si tiene fk poray repartidas)
                 .HasConstraintName("horario_ruta_id_fkey");
 
             entity.HasOne(d => d.Vehiculo).WithMany(p => p.Horarios)
                 .HasForeignKey(d => d.VehiculoId)
-                .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("horario_vehiculo_id_fkey");
         });
 
@@ -140,6 +277,53 @@ public partial class TransporteContext : DbContext
                 .HasForeignKey(d => d.PadreId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("menus_padre_id_fkey");
+        });
+
+        modelBuilder.Entity<Pasaje>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pasaje_pkey");
+
+            entity.ToTable("pasaje");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.AsientoId).HasColumnName("asiento_id");
+            entity.Property(e => e.ClienteId).HasColumnName("cliente_id");
+            entity.Property(e => e.Destino)
+                .HasMaxLength(50)
+                .HasColumnName("destino");
+            entity.Property(e => e.Estado)
+                .HasDefaultValue(true)
+                .HasColumnName("estado");
+            entity.Property(e => e.FechaHora)
+                .HasMaxLength(20)
+                .HasColumnName("fecha_hora");
+            entity.Property(e => e.HorarioId).HasColumnName("horario_id");
+            entity.Property(e => e.Monto).HasColumnName("monto");
+            entity.Property(e => e.Movil)
+                .HasMaxLength(20)
+                .HasColumnName("movil");
+            entity.Property(e => e.UsuarioAnulaId).HasColumnName("usuario_anula_id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+
+            entity.HasOne(d => d.Asiento).WithMany(p => p.Pasajes)
+                .HasForeignKey(d => d.AsientoId)
+                .HasConstraintName("fk_pasaje_asiento");
+
+            entity.HasOne(d => d.Cliente).WithMany(p => p.Pasajes)
+                .HasForeignKey(d => d.ClienteId)
+                .HasConstraintName("pasaje_cliente_id_fkey");
+
+            entity.HasOne(d => d.Horario).WithMany(p => p.Pasajes)
+                .HasForeignKey(d => d.HorarioId)
+                .HasConstraintName("pasaje_horario_id_fkey");
+
+            entity.HasOne(d => d.UsuarioAnula).WithMany(p => p.PasajeUsuarioAnulas)
+                .HasForeignKey(d => d.UsuarioAnulaId)
+                .HasConstraintName("pasaje_usuario_anula_id_fkey");
+
+            entity.HasOne(d => d.Usuario).WithMany(p => p.PasajeUsuarios)
+                .HasForeignKey(d => d.UsuarioId)
+                .HasConstraintName("pasaje_usuario_id_fkey");
         });
 
         modelBuilder.Entity<PuntoVentum>(entity =>
@@ -203,25 +387,13 @@ public partial class TransporteContext : DbContext
             entity.ToTable("ruta");
 
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.DestinoId).HasColumnName("destino_id");
             entity.Property(e => e.Dias)
                 .HasMaxLength(50)
                 .HasColumnName("dias");
             entity.Property(e => e.Estado)
                 .HasDefaultValue(true)
                 .HasColumnName("estado");
-            entity.Property(e => e.OrigenId).HasColumnName("origen_id");
             entity.Property(e => e.Tarifa).HasColumnName("tarifa");
-
-            entity.HasOne(d => d.Destino).WithMany(p => p.RutumDestinos)
-                .HasForeignKey(d => d.DestinoId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("ruta_destino_id_fkey");
-
-            entity.HasOne(d => d.Origen).WithMany(p => p.RutumOrigens)
-                .HasForeignKey(d => d.OrigenId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("ruta_origen_id_fkey");
         });
 
         modelBuilder.Entity<Usuario>(entity =>
@@ -263,14 +435,15 @@ public partial class TransporteContext : DbContext
             entity.ToTable("vehiculo");
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Activo).HasColumnName("activo");
             entity.Property(e => e.Aseguradora)
                 .HasMaxLength(50)
                 .HasColumnName("aseguradora");
-            entity.Property(e => e.AsientosId).HasColumnName("asientos_id");
             entity.Property(e => e.Color)
                 .HasMaxLength(20)
                 .HasColumnName("color");
             entity.Property(e => e.ConductorId).HasColumnName("conductor_id");
+            entity.Property(e => e.DistribucionId).HasColumnName("distribucion_id");
             entity.Property(e => e.Estado)
                 .HasDefaultValue(true)
                 .HasColumnName("estado");
@@ -294,18 +467,16 @@ public partial class TransporteContext : DbContext
                 .HasMaxLength(20)
                 .HasColumnName("tipo");
 
-            entity.HasOne(d => d.Asientos).WithMany(p => p.Vehiculos)
-                .HasForeignKey(d => d.AsientosId)
-                .HasConstraintName("fk_vehiculo_asientos");
-
             entity.HasOne(d => d.Conductor).WithMany(p => p.VehiculoConductors)
                 .HasForeignKey(d => d.ConductorId)
-                .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("vehiculo_conductor_id_fkey");
+
+            entity.HasOne(d => d.Distribucion).WithMany(p => p.Vehiculos)
+                .HasForeignKey(d => d.DistribucionId)
+                .HasConstraintName("fk_vehiculo_distribucion");
 
             entity.HasOne(d => d.Propietario).WithMany(p => p.VehiculoPropietarios)
                 .HasForeignKey(d => d.PropietarioId)
-                .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("vehiculo_propietario_id_fkey");
         });
 

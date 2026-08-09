@@ -21,6 +21,14 @@ public partial class Usuario
 
     public int? PuntoVentaId { get; set; }
 
+    public virtual ICollection<Encomiendum> EncomiendumUsuarioAnulas { get; set; } = new List<Encomiendum>();
+
+    public virtual ICollection<Encomiendum> EncomiendumUsuarios { get; set; } = new List<Encomiendum>();
+
+    public virtual ICollection<Pasaje> PasajeUsuarioAnulas { get; set; } = new List<Pasaje>();
+
+    public virtual ICollection<Pasaje> PasajeUsuarios { get; set; } = new List<Pasaje>();
+
     public virtual PuntoVentum? PuntoVenta { get; set; }
 
     public virtual Rol? Rol { get; set; }

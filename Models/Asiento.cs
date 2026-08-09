@@ -7,15 +7,17 @@ public partial class Asiento
 {
     public int Id { get; set; }
 
-    public int? Filas { get; set; }
+    public int? Fila { get; set; }
 
-    public int? Cantidad { get; set; }
+    public int? Columna { get; set; }
+
+    public int? DistribucionId { get; set; }
 
     public bool? Estado { get; set; }
 
-    public bool? Esminibus { get; set; }
+    public int? Numero { get; set; }
 
-    public string? Nombre { get; set; }
+    public virtual DistribucionAsiento? Distribucion { get; set; }
 
-    public virtual ICollection<Vehiculo> Vehiculos { get; set; } = new List<Vehiculo>();
+    public virtual ICollection<Pasaje> Pasajes { get; set; } = new List<Pasaje>();
 }

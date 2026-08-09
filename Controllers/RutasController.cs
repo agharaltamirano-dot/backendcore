@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using backend.Models.Responses;
 
 namespace backend.Controllers
 {
@@ -17,25 +18,30 @@ namespace backend.Controllers
 
         // GET: api/rutas
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Rutum>>> GetRutas()
+        public async Task<ActionResult<IEnumerable<RutaDto>>> GetRutas()
         {
             var rutas = await _context.Ruta
-            .Where(c => c.Estado == true)
-                .Include(r => r.Origen)
-                .Include(r => r.Destino)
-                .Include(r => r.Horarios)
+                // .Where(c => c.Estado == true)
+                .Include(r => r.Destinos).ThenInclude(d => d.PuntoVenta)
                 .ToListAsync();
-                rutas.Reverse(); // Invertir el orden de las rutas
-            return rutas;
+
+            var result = rutas.Select(r => new RutaDto
+            {
+                Id = r.Id,
+                Dias = r.Dias,
+                Tarifa = r.Tarifa,
+                Estado = r.Estado,
+                Destinos = r.Destinos.Select(d => new DestinoDto { Id = d.Id, EsOrigen = d.EsOrigen, Orden = d.Orden, PuntoVenta = d.PuntoVenta == null ? null : new PuntoVentaDto { Id = d.PuntoVenta.Id, Nombre = d.PuntoVenta.Nombre, Direccion = d.PuntoVenta.Direccion, Telefono = d.PuntoVenta.Telefono } }).ToList()
+            }).Reverse().ToList();
+
+            return Ok(result);
         }
 
         // GET: api/rutas/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Rutum>> GetRuta(int id)
+        public async Task<ActionResult<RutaDto>> GetRuta(int id)
         {
             var ruta = await _context.Ruta
-                .Include(r => r.Origen)
-                .Include(r => r.Destino)
                 .Include(r => r.Horarios)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
@@ -44,48 +50,90 @@ namespace backend.Controllers
                 return NotFound();
             }
 
-            return ruta;
+            return Ok(new RutaDto
+            {
+                Id = ruta.Id,
+                Dias = ruta.Dias,
+                Tarifa = ruta.Tarifa,
+                Estado = ruta.Estado,
+                Destinos = ruta.Destinos.Select(d => new DestinoDto { Id = d.Id, EsOrigen = d.EsOrigen, Orden = d.Orden, PuntoVenta = d.PuntoVenta == null ? null : new PuntoVentaDto { Id = d.PuntoVenta.Id, Nombre = d.PuntoVenta.Nombre, Direccion = d.PuntoVenta.Direccion, Telefono = d.PuntoVenta.Telefono } }).ToList()
+            });
         }
 
         // POST: api/rutas
-        [HttpPost]
-        public async Task<ActionResult<Rutum>> PostRuta(Rutum ruta)
+        // POST: api/rutas
+[HttpPost]
+public async Task<ActionResult<Rutum>> PostRuta(RutaDto dto)
+{
+    var ruta = new Rutum
+    {
+        Dias = dto.Dias,
+        Tarifa = dto.Tarifa,
+        Estado = dto.Estado,
+        Destinos = dto.Destinos?.Select(d => new Destino
         {
-            _context.Ruta.Add(ruta);
-            await _context.SaveChangesAsync();
+            EsOrigen = d.EsOrigen,
+            Orden = d.Orden,
+            PuntoVentaId = d.PuntoVenta.Id // o d.PuntoVentaId si lo defines en el DTO
+        }).ToList() ?? new List<Destino>()
+    };
 
-            return CreatedAtAction(nameof(GetRuta), new { id = ruta.Id }, ruta);
-        }
+    _context.Ruta.Add(ruta);
+    await _context.SaveChangesAsync();
 
-        // PUT: api/rutas/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRuta(int id, Rutum ruta)
+    return CreatedAtAction(nameof(GetRuta), new { id = ruta.Id }, ruta);
+}
+
+// PUT: api/rutas/5
+[HttpPut("{id}")]
+public async Task<IActionResult> PutRuta(int id, RutaDto dto)
+{
+    var ruta = await _context.Ruta
+        .Include(r => r.Destinos)
+        .FirstOrDefaultAsync(r => r.Id == id);
+
+    if (ruta == null) return NotFound();
+
+    ruta.Dias = dto.Dias;
+    ruta.Tarifa = dto.Tarifa;
+    ruta.Estado = dto.Estado;
+
+    var destinosExistentes = ruta.Destinos.ToList();
+
+    foreach (var destinoDto in dto.Destinos ?? new List<DestinoDto>())
+    {
+        var destinoExistente = destinosExistentes.FirstOrDefault(d => d.Id == destinoDto.Id);
+
+        if (destinoExistente != null)
         {
-            if (id != ruta.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(ruta).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Ruta.Any(e => e.Id == id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
+            destinoExistente.EsOrigen = destinoDto.EsOrigen;
+            destinoExistente.Orden = destinoDto.Orden;
+            destinoExistente.PuntoVentaId = destinoDto.PuntoVenta.Id; // o destinoDto.PuntoVentaId
         }
+        else
+        {
+            ruta.Destinos.Add(new Destino
+            {
+                EsOrigen = destinoDto.EsOrigen,
+                Orden = destinoDto.Orden,
+                PuntoVentaId = destinoDto.PuntoVenta.Id
+            });
+        }
+    }
+
+    var idsDto = dto.Destinos?.Select(d => d.Id).ToList() ?? new List<int>();
+    foreach (var destino in destinosExistentes)
+    {
+        if (!idsDto.Contains(destino.Id))
+        {
+            _context.Destinos.Remove(destino);
+        }
+    }
+
+    await _context.SaveChangesAsync();
+    return Ok(ruta);
+}
+
 
         // DELETE: api/rutas/5
         [HttpDelete("{id}")]
@@ -98,7 +146,7 @@ namespace backend.Controllers
             }
 
             // _context.Ruta.Remove(ruta);
-            ruta.Estado = false; // Cambiar el estado a "Inactivo" en lugar de eliminar
+            ruta.Estado = !ruta.Estado; // Cambiar el estado a "Inactivo" en lugar de eliminar
             await _context.SaveChangesAsync();
 
             return NoContent();

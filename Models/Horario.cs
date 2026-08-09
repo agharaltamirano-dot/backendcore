@@ -17,6 +17,10 @@ public partial class Horario
 
     public int? VehiculoId { get; set; }
 
+    public virtual ICollection<Envio> Envios { get; set; } = new List<Envio>();
+
+    public virtual ICollection<Pasaje> Pasajes { get; set; } = new List<Pasaje>();
+
     public virtual Rutum? Ruta { get; set; }
 
     public virtual Vehiculo? Vehiculo { get; set; }

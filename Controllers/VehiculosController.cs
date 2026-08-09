@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using backend.Models.Responses;
 
 namespace backend.Controllers
 {
@@ -17,33 +18,71 @@ namespace backend.Controllers
 
         // GET: api/vehiculos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Vehiculo>>> GetVehiculos()
+        public async Task<ActionResult<IEnumerable<VehiculoListDto>>> GetVehiculos()
         {
-            return await _context.Vehiculos
-            .Where(c => c.Estado == true)
+            var list = await _context.Vehiculos
+                .Where(c => c.Estado == true)
                 .Include(v => v.Conductor)
                 .Include(v => v.Propietario)
-                .Include(v => v.Asientos)
-                .ToListAsync().ContinueWith(t => { t.Result.Reverse(); return t.Result; }); // Invertir el orden de los vehículos
+                .Include(v => v.Distribucion).ThenInclude(d => d.Asientos)
+                .ToListAsync();
 
+            var result = list.Select(v => new VehiculoListDto
+            {
+                Id = v.Id,
+                Movil = v.Movil,
+                Placa = v.Placa,
+                Marca = v.Marca,
+                Modelo = v.Modelo,
+                Estado = v.Estado,
+                Color = v.Color,
+                Tipo = v.Tipo,
+                Soat = v.Soat,
+                Aseguradora = v.Aseguradora,
+                Conductor = v.Conductor == null ? null : new ConductorDto { Id = v.Conductor.Id, Nombres = v.Conductor.Nombres, Apellidos = v.Conductor.Apellidos, Telefono = v.Conductor.Telefono },
+                Propietario = v.Propietario == null ? null : new ConductorDto { Id = v.Propietario.Id, Nombres = v.Propietario.Nombres, Apellidos = v.Propietario.Apellidos, Telefono = v.Propietario.Telefono },
+                Distribucion = v.Distribucion == null ? null : new DistribucionDto {
+                    Id = v.Distribucion.Id,
+                    Estado = v.Distribucion.Estado,
+                    Nombre = v.Distribucion.Nombre,
+                    Asientos = v.Distribucion.Asientos.Select(a => new AsientoDto {
+                        Id = a.Id,
+                        Fila = a.Fila,
+                        Columna = a.Columna,
+                        Estado = a.Estado,
+                    }).ToList()
+                }
+            }).Reverse().ToList();
+
+            return Ok(result);
         }
 
         // GET: api/vehiculos/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Vehiculo>> GetVehiculo(int id)
+        public async Task<ActionResult<VehiculoListDto>> GetVehiculo(int id)
         {
-            var vehiculo = await _context.Vehiculos
+            var v = await _context.Vehiculos
                 .Include(v => v.Conductor)
                 .Include(v => v.Propietario)
-                .Include(v => v.Asientos)
+                .Include(v => v.Distribucion).ThenInclude(d => d.Asientos)
                 .FirstOrDefaultAsync(v => v.Id == id);
 
-            if (vehiculo == null)
-            {
-                return NotFound();
-            }
+            if (v == null) return NotFound();
 
-            return vehiculo;
+            var dto = new VehiculoListDto
+            {
+                Id = v.Id,
+                Movil = v.Movil,
+                Placa = v.Placa,
+                Marca = v.Marca,
+                Modelo = v.Modelo,
+                Estado = v.Estado,
+                Conductor = v.Conductor == null ? null : new ConductorDto { Id = v.Conductor.Id, Nombres = v.Conductor.Nombres, Apellidos = v.Conductor.Apellidos, Telefono = v.Conductor.Telefono },
+                Propietario = v.Propietario == null ? null : new ConductorDto { Id = v.Propietario.Id, Nombres = v.Propietario.Nombres, Apellidos = v.Propietario.Apellidos, Telefono = v.Propietario.Telefono },
+                Distribucion = v.Distribucion == null ? null : new DistribucionDto { Id = v.Distribucion.Id, Estado = v.Distribucion.Estado, Asientos = v.Distribucion.Asientos.Select(a => new AsientoDto { Id = a.Id, Fila = a.Fila, Columna = a.Columna, Estado = a.Estado }).ToList() }
+            };
+
+            return Ok(dto);
         }
 
         // POST: api/vehiculos

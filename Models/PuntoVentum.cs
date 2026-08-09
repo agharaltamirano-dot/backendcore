@@ -17,9 +17,7 @@ public partial class PuntoVentum
 
     public bool? EsPuntoVenta { get; set; }
 
-    public virtual ICollection<Rutum> RutumDestinos { get; set; } = new List<Rutum>();
-
-    public virtual ICollection<Rutum> RutumOrigens { get; set; } = new List<Rutum>();
+    public virtual ICollection<Destino> Destinos { get; set; } = new List<Destino>();
 
     public virtual ICollection<Usuario> Usuarios { get; set; } = new List<Usuario>();
 }

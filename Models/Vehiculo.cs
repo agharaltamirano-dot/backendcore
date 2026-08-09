@@ -29,11 +29,13 @@ public partial class Vehiculo
 
     public bool? Estado { get; set; }
 
-    public int? AsientosId { get; set; }
+    public bool? Activo { get; set; }
 
-    public virtual Asiento? Asientos { get; set; }
+    public int? DistribucionId { get; set; }
 
     public virtual Conductor? Conductor { get; set; }
+
+    public virtual DistribucionAsiento? Distribucion { get; set; }
 
     public virtual ICollection<Horario> Horarios { get; set; } = new List<Horario>();
 
