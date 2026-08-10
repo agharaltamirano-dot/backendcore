@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using backend.Models.Responses;
 using System.Text.Json;
+using System.Globalization;
+using System.Linq;
 
 namespace backend.Controllers
 {
@@ -11,6 +13,27 @@ namespace backend.Controllers
     public class PasajesController : ControllerBase
     {
         private readonly TransporteContext _context;
+
+        private static string NormalizeName(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+            // collapse whitespace and trim first
+            var collapsed = string.Join(" ", s.Trim().Split((char[])null, StringSplitOptions.RemoveEmptyEntries));
+            var normalized = collapsed.Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder();
+            foreach (var ch in normalized)
+            {
+                var uc = CharUnicodeInfo.GetUnicodeCategory(ch);
+                if (uc != UnicodeCategory.NonSpacingMark) sb.Append(ch);
+            }
+            return sb.ToString().Normalize(System.Text.NormalizationForm.FormC).ToLowerInvariant();
+        }
+
+        private static string CleanDisplayName(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+            return string.Join(" ", s.Trim().Split((char[])null, StringSplitOptions.RemoveEmptyEntries));
+        }
 
         public PasajesController(TransporteContext context)
         {
@@ -174,16 +197,32 @@ namespace backend.Controllers
                                 }
                                 else
                                 {
-                                    var newCliente = new Cliente
+                                    // Buscar por nombre igual ignorando mayúsculas y acentos
+                                    var incomingNorm = NormalizeName(dtoItem.Cliente.NombreCompleto);
+                                    Cliente? foundByName = null;
+                                    if (!string.IsNullOrEmpty(incomingNorm))
                                     {
-                                        NombreCompleto = dtoItem.Cliente.NombreCompleto,
-                                        Ci = dtoItem.Cliente.Ci,
-                                        Telefono = dtoItem.Cliente.Telefono,
-                                        Estado = dtoItem.Cliente.Estado
-                                    };
-                                    _context.Clientes.Add(newCliente);
-                                    await _context.SaveChangesAsync();
-                                    clienteId = newCliente.Id;
+                                        var allClients = await _context.Clientes.ToListAsync();
+                                        foundByName = allClients.FirstOrDefault(c => !string.IsNullOrEmpty(c.NombreCompleto) && NormalizeName(c.NombreCompleto) == incomingNorm);
+                                    }
+
+                                    if (foundByName != null)
+                                    {
+                                        clienteId = foundByName.Id;
+                                    }
+                                    else
+                                    {
+                                        var newCliente = new Cliente
+                                        {
+                                            NombreCompleto = CleanDisplayName(dtoItem.Cliente.NombreCompleto),
+                                            Ci = dtoItem.Cliente.Ci,
+                                            Telefono = dtoItem.Cliente.Telefono,
+                                            Estado = dtoItem.Cliente.Estado
+                                        };
+                                        _context.Clientes.Add(newCliente);
+                                        await _context.SaveChangesAsync();
+                                        clienteId = newCliente.Id;
+                                    }
                                 }
                             }
 
@@ -192,6 +231,7 @@ namespace backend.Controllers
                                 FechaHora = dtoItem.FechaHora,
                                 Monto = dtoItem.Monto,
                                 Movil = dtoItem.Movil,
+                                Reserva = dtoItem.Reserva,
                                 Estado = dtoItem.Estado,
                                 Destino = dtoItem.Destino,
                                 AsientoId = dtoItem.AsientoId,
@@ -241,16 +281,32 @@ namespace backend.Controllers
                         }
                         else
                         {
-                            var newCliente = new Cliente
+                            // Buscar por nombre igual ignorando mayúsculas y acentos
+                            var incomingNorm = NormalizeName(dto.Cliente.NombreCompleto);
+                            Cliente? foundByName = null;
+                            if (!string.IsNullOrEmpty(incomingNorm))
                             {
-                                NombreCompleto = dto.Cliente.NombreCompleto,
-                                Ci = dto.Cliente.Ci,
-                                Telefono = dto.Cliente.Telefono,
-                                Estado = dto.Cliente.Estado
-                            };
-                            _context.Clientes.Add(newCliente);
-                            await _context.SaveChangesAsync();
-                            clienteId = newCliente.Id;
+                                var allClients = await _context.Clientes.ToListAsync();
+                                foundByName = allClients.FirstOrDefault(c => !string.IsNullOrEmpty(c.NombreCompleto) && NormalizeName(c.NombreCompleto) == incomingNorm);
+                            }
+
+                            if (foundByName != null)
+                            {
+                                clienteId = foundByName.Id;
+                            }
+                            else
+                            {
+                                var newCliente = new Cliente
+                                {
+                                    NombreCompleto = CleanDisplayName(dto.Cliente.NombreCompleto),
+                                    Ci = dto.Cliente.Ci,
+                                    Telefono = dto.Cliente.Telefono,
+                                    Estado = dto.Cliente.Estado
+                                };
+                                _context.Clientes.Add(newCliente);
+                                await _context.SaveChangesAsync();
+                                clienteId = newCliente.Id;
+                            }
                         }
                     }
 

@@ -160,3 +160,8 @@ C:\Users\yossemar\Documents\empresas\TRANSPORTE EDDA\backend\obj\Debug\net10.0\r
 C:\Users\yossemar\Documents\empresas\TRANSPORTE EDDA\backend\obj\Debug\net10.0\backend.pdb
 C:\Users\yossemar\Documents\empresas\TRANSPORTE EDDA\backend\obj\Debug\net10.0\backend.genruntimeconfig.cache
 C:\Users\yossemar\Documents\empresas\TRANSPORTE EDDA\backend\obj\Debug\net10.0\ref\backend.dll
+C:\Users\yossemar\Documents\empresas\TRANSPORTE EDDA\backend\bin\Debug\net10.0\PdfSharpCore.dll
+C:\Users\yossemar\Documents\empresas\TRANSPORTE EDDA\backend\bin\Debug\net10.0\ICSharpCode.SharpZipLib.dll
+C:\Users\yossemar\Documents\empresas\TRANSPORTE EDDA\backend\bin\Debug\net10.0\SixLabors.Fonts.dll
+C:\Users\yossemar\Documents\empresas\TRANSPORTE EDDA\backend\bin\Debug\net10.0\SixLabors.ImageSharp.dll
+C:\Users\yossemar\Documents\empresas\TRANSPORTE EDDA\backend\bin\Debug\net10.0\de\PdfSharpCore.resources.dll

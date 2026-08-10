@@ -23,6 +23,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// Registrar autorización
+builder.Services.AddAuthorization();
+
 // Add services to the container.
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<TransporteContext>(options =>
@@ -42,7 +45,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy => policy.WithOrigins("http://localhost:5173","http://localhost:5174")
                         .AllowAnyHeader()
-                        .AllowAnyMethod());
+                        .AllowAnyMethod()
+                        .AllowCredentials()
+                        .WithExposedHeaders("Content-Disposition")
+                        );
 });
 var app = builder.Build();
 app.UseCors("AllowFrontend");
