@@ -25,6 +25,8 @@ namespace backend.Controllers
                 .Include(h => h.Ruta).ThenInclude(r => r.Destinos).ThenInclude(d => d.PuntoVenta)
                 .Include(h => h.Vehiculo).ThenInclude(v => v.Conductor)
                 .Include(h => h.Vehiculo).ThenInclude(v => v.Distribucion).ThenInclude(d => d.Asientos)
+                .Include(h => h.Pasajes).ThenInclude(p => p.Cliente)
+                .Include(h => h.Pasajes).ThenInclude(p => p.Asiento)
                 .ToListAsync();
 
             var result = horarios.Select(h => new HorarioListDto
@@ -65,7 +67,48 @@ namespace backend.Controllers
                         Apellidos = h.Vehiculo.Conductor.Apellidos,
                         Telefono = h.Vehiculo.Conductor.Telefono
                     }
-                }
+                },
+                Pasajes = h.Pasajes == null ? null : h.Pasajes.Select(p => new PasajeListDto
+                {
+                    Id = p.Id,
+                    FechaHora = p.FechaHora,
+                    Monto = p.Monto,
+                    Movil = p.Movil,
+                    Estado = p.Estado,
+                    Destino = p.Destino,
+                    Reserva = p.Reserva,
+                    Asiento = p.Asiento == null ? null : new AsientoDto
+                    {
+                        Id = p.Asiento.Id,
+                        Fila = p.Asiento.Fila,
+                        Columna = p.Asiento.Columna,
+                        Estado = p.Asiento.Estado,
+                        Numero = p.Asiento.Numero,
+                        DistribucionId = p.Asiento.DistribucionId
+                    },
+                    Cliente = p.Cliente == null ? null : new ClienteDto
+                    {
+                        Id = p.Cliente.Id,
+                        NombreCompleto = p.Cliente.NombreCompleto,
+                        Ci = p.Cliente.Ci,
+                        Telefono = p.Cliente.Telefono,
+                        Estado = p.Cliente.Estado
+                    },
+                    Usuario = p.Usuario == null ? null : new UsuarioDto
+                    {
+                        Id = p.Usuario.Id,
+                        Usuario = p.Usuario.Usuario1,
+                        PuntoVentaId = p.Usuario.PuntoVentaId,
+                        RolId = p.Usuario.RolId
+                    },
+                    UsuarioAnula = p.UsuarioAnula == null ? null : new UsuarioDto
+                    {
+                        Id = p.UsuarioAnula.Id,
+                        Usuario = p.UsuarioAnula.Usuario1,
+                        PuntoVentaId = p.UsuarioAnula.PuntoVentaId,
+                        RolId = p.UsuarioAnula.RolId
+                    }
+                }).ToList()
             }).Reverse().ToList();
 
             return Ok(result);
@@ -79,6 +122,8 @@ public async Task<ActionResult<HorarioListDto>> GetHorario(int id)
         .Include(h => h.Ruta).ThenInclude(r => r.Destinos).ThenInclude(d => d.PuntoVenta)
         .Include(h => h.Vehiculo).ThenInclude(v => v.Conductor)
         .Include(h => h.Vehiculo).ThenInclude(v => v.Distribucion).ThenInclude(d => d.Asientos)
+        .Include(h => h.Pasajes).ThenInclude(p => p.Cliente)
+        .Include(h => h.Pasajes).ThenInclude(p => p.Asiento)
         .FirstOrDefaultAsync(h => h.Id == id);
 
     if (h == null) return NotFound();
@@ -136,6 +181,47 @@ public async Task<ActionResult<HorarioListDto>> GetHorario(int id)
                 }).ToList()
             }
         },
+        Pasajes = h.Pasajes == null ? null : h.Pasajes.Select(p => new PasajeListDto
+        {
+            Id = p.Id,
+            FechaHora = p.FechaHora,
+            Monto = p.Monto,
+            Movil = p.Movil,
+            Estado = p.Estado,
+            Destino = p.Destino,
+            Reserva = p.Reserva,
+            Asiento = p.Asiento == null ? null : new AsientoDto
+            {
+                Id = p.Asiento.Id,
+                Fila = p.Asiento.Fila,
+                Columna = p.Asiento.Columna,
+                Estado = p.Asiento.Estado,
+                Numero = p.Asiento.Numero,
+                DistribucionId = p.Asiento.DistribucionId
+            },
+            Cliente = p.Cliente == null ? null : new ClienteDto
+            {
+                Id = p.Cliente.Id,
+                NombreCompleto = p.Cliente.NombreCompleto,
+                Ci = p.Cliente.Ci,
+                Telefono = p.Cliente.Telefono,
+                Estado = p.Cliente.Estado
+            },
+            Usuario = p.Usuario == null ? null : new UsuarioDto
+            {
+                Id = p.Usuario.Id,
+                Usuario = p.Usuario.Usuario1,
+                PuntoVentaId = p.Usuario.PuntoVentaId,
+                RolId = p.Usuario.RolId
+            },
+            UsuarioAnula = p.UsuarioAnula == null ? null : new UsuarioDto
+            {
+                Id = p.UsuarioAnula.Id,
+                Usuario = p.UsuarioAnula.Usuario1,
+                PuntoVentaId = p.UsuarioAnula.PuntoVentaId,
+                RolId = p.UsuarioAnula.RolId
+            }
+        }).ToList(),
     };
 
     return Ok(dto);

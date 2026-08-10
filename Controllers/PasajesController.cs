@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using backend.Models.Responses;
+using System.Text.Json;
 
 namespace backend.Controllers
 {
@@ -130,12 +131,158 @@ namespace backend.Controllers
 
         // POST: api/pasajes
         [HttpPost]
-        public async Task<ActionResult<Pasaje>> PostPasaje(Pasaje pasaje)
+        [Consumes("application/json")]
+        public async Task<ActionResult> PostPasaje([FromBody] JsonElement raw)
         {
-            _context.Pasajes.Add(pasaje);
-            await _context.SaveChangesAsync();
+            // Imprimir body crudo para depuración
+            try
+            {
+                var rawText = raw.GetRawText();
+                System.Console.WriteLine("----- RAW BODY RECEIVED -----");
+                System.Console.WriteLine(rawText);
 
-            return CreatedAtAction(nameof(GetPasaje), new { id = pasaje.Id }, pasaje);
+                // Si el cliente envía un array, procesamos cada elemento
+                if (raw.ValueKind == JsonValueKind.Array)
+                {
+                    var results = new List<object>();
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    foreach (var item in raw.EnumerateArray())
+                    {
+                        try
+                        {
+                            var itemText = item.GetRawText();
+                            var dtoItem = JsonSerializer.Deserialize<PasajeCreateDto>(itemText, options);
+                            if (dtoItem == null)
+                            {
+                                results.Add(new { ok = false, error = "No se pudo deserializar item", item = JsonDocument.Parse(itemText).RootElement });
+                                continue;
+                            }
+
+                            // Manejar cliente
+                            int? clienteId = null;
+                            if (dtoItem.Cliente != null)
+                            {
+                                if (dtoItem.Cliente.Id.HasValue && dtoItem.Cliente.Id.Value > 0)
+                                {
+                                    var existing = await _context.Clientes.FindAsync(dtoItem.Cliente.Id.Value);
+                                    if (existing == null)
+                                    {
+                                        results.Add(new { ok = false, error = "Cliente no encontrado", clienteId = dtoItem.Cliente.Id });
+                                        continue;
+                                    }
+                                    clienteId = existing.Id;
+                                }
+                                else
+                                {
+                                    var newCliente = new Cliente
+                                    {
+                                        NombreCompleto = dtoItem.Cliente.NombreCompleto,
+                                        Ci = dtoItem.Cliente.Ci,
+                                        Telefono = dtoItem.Cliente.Telefono,
+                                        Estado = dtoItem.Cliente.Estado
+                                    };
+                                    _context.Clientes.Add(newCliente);
+                                    await _context.SaveChangesAsync();
+                                    clienteId = newCliente.Id;
+                                }
+                            }
+
+                            var pasajeItem = new Pasaje
+                            {
+                                FechaHora = dtoItem.FechaHora,
+                                Monto = dtoItem.Monto,
+                                Movil = dtoItem.Movil,
+                                Estado = dtoItem.Estado,
+                                Destino = dtoItem.Destino,
+                                AsientoId = dtoItem.AsientoId,
+                                HorarioId = dtoItem.HorarioId,
+                                UsuarioId = dtoItem.UsuarioId,
+                                ClienteId = clienteId
+                            };
+
+                            _context.Pasajes.Add(pasajeItem);
+                            await _context.SaveChangesAsync();
+
+                            results.Add(new { ok = true, pasajeId = pasajeItem.Id, clienteId = clienteId });
+                        }
+                        catch (Exception exItem)
+                        {
+                            results.Add(new { ok = false, error = exItem.Message });
+                        }
+                    }
+
+                    return Ok(new { mensaje = "Procesado array", resultados = results });
+                }
+
+                // Si es un objeto, intentamos deserializar a PasajeCreateDto y procesarlo
+                if (raw.ValueKind == JsonValueKind.Object)
+                {
+                    var dto = JsonSerializer.Deserialize<PasajeCreateDto>(rawText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (dto == null)
+                    {
+                        return BadRequest(new { mensaje = "No se pudo deserializar a PasajeCreateDto." });
+                    }
+
+                    // Validación mínima
+                    if (!TryValidateModel(dto))
+                    {
+                        return BadRequest(ModelState);
+                    }
+
+                    // Reusar la lógica existente para crear cliente y pasaje
+                    int? clienteId = null;
+                    if (dto.Cliente != null)
+                    {
+                        if (dto.Cliente.Id.HasValue && dto.Cliente.Id.Value > 0)
+                        {
+                            var existing = await _context.Clientes.FindAsync(dto.Cliente.Id.Value);
+                            if (existing == null) return BadRequest("Cliente no encontrado");
+                            clienteId = existing.Id;
+                        }
+                        else
+                        {
+                            var newCliente = new Cliente
+                            {
+                                NombreCompleto = dto.Cliente.NombreCompleto,
+                                Ci = dto.Cliente.Ci,
+                                Telefono = dto.Cliente.Telefono,
+                                Estado = dto.Cliente.Estado
+                            };
+                            _context.Clientes.Add(newCliente);
+                            await _context.SaveChangesAsync();
+                            clienteId = newCliente.Id;
+                        }
+                    }
+
+                    var pasaje = new Pasaje
+                    {
+                        FechaHora = dto.FechaHora,
+                        Monto = dto.Monto,
+                        Movil = dto.Movil,
+                        Estado = dto.Estado,
+                        Destino = dto.Destino,
+                        AsientoId = dto.AsientoId,
+                        HorarioId = dto.HorarioId,
+                        UsuarioId = dto.UsuarioId,
+                        ClienteId = clienteId
+                    };
+
+                    _context.Pasajes.Add(pasaje);
+                    await _context.SaveChangesAsync();
+
+                    return CreatedAtAction(nameof(GetPasaje), new { id = pasaje.Id }, pasaje);
+                }
+
+                return BadRequest(new { mensaje = "JSON recibido no es un objeto ni un array válido." });
+            }
+            catch (JsonException jex)
+            {
+                return BadRequest(new { mensaje = "JSON inválido.", detalle = jex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { mensaje = "Error interno procesando el JSON.", detalle = ex.Message });
+            }
         }
 
         // PUT: api/pasajes/5
@@ -163,6 +310,7 @@ namespace backend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePasaje(int id)
         {
+
             var pasaje = await _context.Pasajes.FindAsync(id);
             if (pasaje == null) return NotFound();
 
@@ -170,7 +318,7 @@ namespace backend.Controllers
             pasaje.UsuarioAnulaId = /* aquí asignas el usuario que anula */ null;
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(new { mensaje = "eliminado" });
         }
     }
 }

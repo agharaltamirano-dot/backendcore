@@ -27,6 +27,8 @@ public partial class Encomiendum
 
     public int? UsuarioAnulaId { get; set; }
 
+    public bool? Pagado { get; set; }
+
     public virtual Cliente? ClienteConsignatario { get; set; }
 
     public virtual Cliente? ClienteRemitente { get; set; }

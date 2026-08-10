@@ -31,6 +31,7 @@ namespace backend.Models.Responses
         public string? Movil { get; set; }
         public bool? Estado { get; set; }
         public string? Destino { get; set; }
+        public bool? Reserva { get; set; }
         public AsientoDto? Asiento { get; set; }
         public ClienteDto? Cliente { get; set; }
         public UsuarioDto? Usuario { get; set; }
@@ -46,6 +47,29 @@ namespace backend.Models.Responses
         public ClienteDto? Cliente { get; set; }
     }
 
+    public class ClienteCreateDto
+    {
+        public int? Id { get; set; }
+        public string? NombreCompleto { get; set; }
+        public string? Ci { get; set; }
+        public string? Telefono { get; set; }
+        public bool? Estado { get; set; }
+    }
+
+    public class PasajeCreateDto
+    {
+        public string? FechaHora { get; set; }
+        public int? Monto { get; set; }
+        public string? Movil { get; set; }
+        public bool? Reserva { get; set; }
+        public bool? Estado { get; set; }
+        public string? Destino { get; set; }
+        public int? AsientoId { get; set; }
+        public int? HorarioId { get; set; }
+        public int? UsuarioId { get; set; }
+        public ClienteCreateDto? Cliente { get; set; }
+    }
+
     public class EncomiendaListDto
     {
         public int Id { get; set; }
@@ -55,6 +79,7 @@ namespace backend.Models.Responses
         public double? Monto { get; set; }
         public string? Numero { get; set; }
         public bool? Estado { get; set; }
+        public bool? Pagado { get; set; }
         public ClienteDto? ClienteRemitente { get; set; }
         public ClienteDto? ClienteConsignatario { get; set; }
         public UsuarioDto? Usuario { get; set; }

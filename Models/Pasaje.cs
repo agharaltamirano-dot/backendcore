@@ -27,6 +27,8 @@ public partial class Pasaje
 
     public int? UsuarioAnulaId { get; set; }
 
+    public bool? Reserva { get; set; }
+
     public virtual Asiento? Asiento { get; set; }
 
     public virtual Cliente? Cliente { get; set; }

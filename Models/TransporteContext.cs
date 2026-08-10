@@ -174,6 +174,9 @@ public partial class TransporteContext : DbContext
             entity.Property(e => e.Numero)
                 .HasMaxLength(20)
                 .HasColumnName("numero");
+            entity.Property(e => e.Pagado)
+                .HasDefaultValue(true)
+                .HasColumnName("pagado");
             entity.Property(e => e.UsuarioAnulaId).HasColumnName("usuario_anula_id");
             entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
 
@@ -302,6 +305,9 @@ public partial class TransporteContext : DbContext
             entity.Property(e => e.Movil)
                 .HasMaxLength(20)
                 .HasColumnName("movil");
+            entity.Property(e => e.Reserva)
+                .HasDefaultValue(false)
+                .HasColumnName("reserva");
             entity.Property(e => e.UsuarioAnulaId).HasColumnName("usuario_anula_id");
             entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
 
