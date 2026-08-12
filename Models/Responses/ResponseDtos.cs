@@ -78,6 +78,7 @@ namespace backend.Models.Responses
         public string? FechaEntrega { get; set; }
         public double? Monto { get; set; }
         public string? Numero { get; set; }
+        public string? Destino { get; set; }
         public bool? Estado { get; set; }
         public bool? Pagado { get; set; }
         public ClienteDto? ClienteRemitente { get; set; }

@@ -21,7 +21,7 @@ namespace backend.Controllers
 public async Task<ActionResult<IEnumerable<object>>> GetUsuarios()
 {
     var usuarios = await _context.Usuarios
-        .Where(u => u.Estado == true) // solo activos
+       // .Where(u => u.Estado == true) // solo activos
         .Include(u => u.Rol)
             .ThenInclude(r => r.Menus)
         .Include(u => u.PuntoVenta) // 👈 incluir punto de venta

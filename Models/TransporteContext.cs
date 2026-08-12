@@ -163,6 +163,10 @@ public partial class TransporteContext : DbContext
             entity.Property(e => e.Contenido)
                 .HasMaxLength(150)
                 .HasColumnName("contenido");
+            entity.Property(e => e.Destino)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'Tarija'::character varying")
+                .HasColumnName("destino");
             entity.Property(e => e.Estado).HasColumnName("estado");
             entity.Property(e => e.FechaEntrega)
                 .HasMaxLength(20)

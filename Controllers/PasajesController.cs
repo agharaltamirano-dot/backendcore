@@ -90,7 +90,7 @@ namespace backend.Controllers
                     PuntoVentaId = p.UsuarioAnula.PuntoVentaId,
                     RolId = p.UsuarioAnula.RolId
                 }
-            }).ToList();
+            }).Reverse().ToList();
 
             return Ok(result);
         }

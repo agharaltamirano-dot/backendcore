@@ -29,6 +29,8 @@ public partial class Encomiendum
 
     public bool? Pagado { get; set; }
 
+    public string? Destino { get; set; }
+
     public virtual Cliente? ClienteConsignatario { get; set; }
 
     public virtual Cliente? ClienteRemitente { get; set; }

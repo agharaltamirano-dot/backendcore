@@ -200,7 +200,7 @@ namespace backend.Controllers
                     EnsureNewPageIfNeeded();
                     double labelWidth = 40;
                     double valueLeft = left + labelWidth;
-                    double valueWidth = pageWidth - valueLeft - 10;
+                    double valueWidth = pageWidth - valueLeft - 30;
                     gfx.DrawString(label, labelFont, XBrushes.Black, new XRect(left, y, labelWidth, 20), XStringFormats.TopLeft);
                     gfx.DrawString(value ?? string.Empty, valueFont, XBrushes.Black, new XRect(valueLeft, y, valueWidth, 20), XStringFormats.TopRight);
                     y += 14;
@@ -237,8 +237,42 @@ namespace backend.Controllers
                 DrawPairLocal("Movil:", h.Vehiculo?.Movil);
                 DrawPairLocal("Conductor:", (h.Vehiculo?.Conductor?.Nombres ?? string.Empty) + " " + (h.Vehiculo?.Conductor?.Apellidos ?? string.Empty));
 
+                // Listado de pasajes: 3 columnas (Nombre, CI, Teléfono)
+                var pasajes = await _context.Pasajes
+                    .Include(pa => pa.Cliente)
+                    .Where(pa => pa.HorarioId == h.Id)
+                    .ToListAsync();
+
                 EnsureNewPageIfNeeded();
-                gfx.DrawString("------------------------------", valueFont, XBrushes.Black, new XRect(left, y, pageWidth - 20, 20), XStringFormats.TopLeft);
+                double tableLeft = left;
+                double tableRight = pageWidth - 10;
+                double tableWidth = tableRight - tableLeft;
+                double colWidth = tableWidth / 3.0;
+
+                // encabezados de columna
+                gfx.DrawString("Nombre", labelFont, XBrushes.Black, new XRect(tableLeft, y, colWidth, 20), XStringFormats.TopLeft);
+                gfx.DrawString("CI", labelFont, XBrushes.Black, new XRect(tableLeft + colWidth, y, colWidth, 20), XStringFormats.TopLeft);
+                gfx.DrawString("Teléfono", labelFont, XBrushes.Black, new XRect(tableLeft + 2 * colWidth, y, colWidth, 20), XStringFormats.TopLeft);
+                y += 14;
+
+                // filas de datos
+                foreach (var pa in pasajes)
+                {
+                    EnsureNewPageIfNeeded();
+                    var nombre = pa.Cliente?.NombreCompleto ?? string.Empty;
+                    var ci = pa.Cliente?.Ci ?? string.Empty;
+                    var tel = pa.Cliente?.Telefono ?? string.Empty;
+
+                    gfx.DrawString(nombre, valueFont, XBrushes.Black, new XRect(tableLeft, y, colWidth, 20), XStringFormats.TopLeft);
+                    gfx.DrawString(ci, valueFont, XBrushes.Black, new XRect(tableLeft + colWidth, y, colWidth, 20), XStringFormats.TopLeft);
+                    gfx.DrawString(tel, valueFont, XBrushes.Black, new XRect(tableLeft + 2 * colWidth, y, colWidth, 20), XStringFormats.TopLeft);
+                    y += 14;
+                }
+
+                // espacio y franja separadora
+                y += 6;
+                EnsureNewPageIfNeeded();
+                gfx.DrawString("-----------------------------------------------------------", valueFont, XBrushes.Black, new XRect(left, y, pageWidth - 20, 20), XStringFormats.TopLeft);
                 y += 14;
 
                 using var ms = new MemoryStream();
