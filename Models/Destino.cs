@@ -15,6 +15,8 @@ public partial class Destino
 
     public int? Orden { get; set; }
 
+    public double? Tarifa { get; set; }
+
     public virtual PuntoVentum? PuntoVenta { get; set; }
 
     public virtual Rutum? Ruta { get; set; }

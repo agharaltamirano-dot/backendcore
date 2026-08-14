@@ -128,6 +128,9 @@ public partial class TransporteContext : DbContext
             entity.Property(e => e.Orden).HasColumnName("orden");
             entity.Property(e => e.PuntoVentaId).HasColumnName("punto_venta_id");
             entity.Property(e => e.RutaId).HasColumnName("ruta_id");
+            entity.Property(e => e.Tarifa)
+                .HasDefaultValue(50.0)
+                .HasColumnName("tarifa");
 
             entity.HasOne(d => d.PuntoVenta).WithMany(p => p.Destinos)
                 .HasForeignKey(d => d.PuntoVentaId)

@@ -145,6 +145,7 @@ public async Task<ActionResult<HorarioListDto>> GetHorario(int id)
                 Id = d.Id,
                 EsOrigen = d.EsOrigen,
                 Orden = d.Orden,
+                Tarifa = d.Tarifa,
                 PuntoVenta = d.PuntoVenta == null ? null : new PuntoVentaDto
                 {
                     Id = d.PuntoVenta.Id,

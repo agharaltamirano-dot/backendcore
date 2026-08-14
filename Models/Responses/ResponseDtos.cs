@@ -107,6 +107,7 @@ namespace backend.Models.Responses
         public int Id { get; set; }
         public bool? EsOrigen { get; set; }
         public int? Orden { get; set; }
+        public double? Tarifa { get; set; }
         public PuntoVentaDto? PuntoVenta { get; set; }
     }
 
