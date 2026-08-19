@@ -5,6 +5,7 @@ using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
+using ClosedXML.Excel;
 
 namespace backend.Controllers
 {
@@ -71,7 +72,6 @@ namespace backend.Controllers
                 void DrawPair(string label, string value)
 {
     EnsureNewPageIfNeeded();
-
     double labelWidth = 50;                 // ancho más reducido para el label
     double valueLeft = left + labelWidth; // solo 2pt de separación
     double valueWidth = pageWidth - valueLeft - 30; // margen derecho de 15pt
@@ -88,7 +88,22 @@ namespace backend.Controllers
     y += 14;
 }
 
+// cargar la imagen desde tu carpeta assets
+var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo9.png");
+if (System.IO.File.Exists(logoPath))
+{
+    var logo = XImage.FromFile(logoPath);
 
+    // calcular posición centrada
+    double logoWidth = 60;   // ancho deseado en puntos
+    double logoHeight = 60;  // alto deseado en puntos
+    double logoX = (pageWidth - logoWidth) / 2; // centrado horizontal
+    double logoY = y;        // posición vertical actual
+
+    gfx.DrawImage(logo, logoX, logoY, logoWidth, logoHeight);
+
+    y += (int)logoHeight + 5; // avanzar la coordenada Y para que no se superponga con el texto
+}
 
                 // encabezado centrado + subtítulo centrado debajo
                 EnsureNewPageIfNeeded();
@@ -205,6 +220,22 @@ namespace backend.Controllers
                     gfx.DrawString(value ?? string.Empty, valueFont, XBrushes.Black, new XRect(valueLeft, y, valueWidth, 20), XStringFormats.TopRight);
                     y += 14;
                 }
+                // cargar la imagen desde tu carpeta assets
+var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo9.png");
+if (System.IO.File.Exists(logoPath))
+{
+    var logo = XImage.FromFile(logoPath);
+
+    // calcular posición centrada
+    double logoWidth = 60;   // ancho deseado en puntos
+    double logoHeight = 60;  // alto deseado en puntos
+    double logoX = (pageWidth - logoWidth) / 2; // centrado horizontal
+    double logoY = y;        // posición vertical actual
+
+    gfx.DrawImage(logo, logoX, logoY, logoWidth, logoHeight);
+
+    y += (int)logoHeight + 5; // avanzar la coordenada Y para que no se superponga con el texto
+}
 
                 // Header
                 var title = "HOJA DE RUTA";
@@ -290,5 +321,6 @@ namespace backend.Controllers
                 return StatusCode(500, "Error generando hoja de ruta");
             }
         }
+
     }
 }
