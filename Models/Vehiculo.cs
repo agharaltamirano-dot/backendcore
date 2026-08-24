@@ -33,6 +33,8 @@ public partial class Vehiculo
 
     public int? DistribucionId { get; set; }
 
+    public string? Foto { get; set; }
+
     public virtual Conductor? Conductor { get; set; }
 
     public virtual DistribucionAsiento? Distribucion { get; set; }

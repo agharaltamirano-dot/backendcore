@@ -19,6 +19,8 @@ public partial class Conductor
 
     public bool? Estado { get; set; }
 
+    public string? FotoLicencia { get; set; }
+
     public virtual ICollection<Envio> Envios { get; set; } = new List<Envio>();
 
     public virtual ICollection<Vehiculo> VehiculoConductors { get; set; } = new List<Vehiculo>();

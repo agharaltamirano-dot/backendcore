@@ -46,5 +46,45 @@ namespace backend.Controllers
 
             return Ok(result);
         }
+        // POST: api/encomienda
+[HttpPost]
+public async Task<ActionResult> PostEncomienda([FromBody] Encomiendum encomienda)
+{
+    // Si viene objeto ClienteRemitente en vez de Id
+    if (encomienda.ClienteRemitenteId == null && encomienda.ClienteRemitente != null)
+    {
+        _context.Clientes.Add(encomienda.ClienteRemitente);
+        await _context.SaveChangesAsync();
+        encomienda.ClienteRemitenteId = encomienda.ClienteRemitente.Id;
     }
+
+    // Si viene objeto ClienteConsignatario en vez de Id
+    if (encomienda.ClienteConsignatarioId == null && encomienda.ClienteConsignatario != null)
+    {
+        _context.Clientes.Add(encomienda.ClienteConsignatario);
+        await _context.SaveChangesAsync();
+        encomienda.ClienteConsignatarioId = encomienda.ClienteConsignatario.Id;
+    }
+
+    // Guardar la encomienda para que EF genere el Id
+    _context.Encomienda.Add(encomienda);
+    await _context.SaveChangesAsync();
+
+    // Ahora que ya tiene Id, generamos el Numero
+    encomienda.Numero = $"E-{encomienda.Id}";
+
+    // Actualizamos el registro con el nuevo Numero
+    _context.Entry(encomienda).Property(e => e.Numero).IsModified = true;
+    await _context.SaveChangesAsync();
+
+    // Mostrar en consola lo recibido
+    Console.WriteLine("📦 Encomienda creada:");
+    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(encomienda));
+
+    return CreatedAtAction(nameof(GetEncomiendas), new { id = encomienda.Id }, encomienda);
+}
+
+
+    }
+    
 }

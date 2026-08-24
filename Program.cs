@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.FileProviders;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -64,6 +65,15 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 // Mapear controladores
+
+// habilitar archivos estáticos
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "assets")),
+    RequestPath = "/assets"
+});
+
 app.MapControllers();
 
 // Ejemplo minimal API que ya tenías

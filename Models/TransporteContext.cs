@@ -106,6 +106,9 @@ public partial class TransporteContext : DbContext
                 .HasMaxLength(10)
                 .HasColumnName("categoria");
             entity.Property(e => e.Estado).HasColumnName("estado");
+            entity.Property(e => e.FotoLicencia)
+                .HasMaxLength(100)
+                .HasColumnName("foto_licencia");
             entity.Property(e => e.Licencia)
                 .HasMaxLength(20)
                 .HasColumnName("licencia");
@@ -460,6 +463,9 @@ public partial class TransporteContext : DbContext
             entity.Property(e => e.Estado)
                 .HasDefaultValue(true)
                 .HasColumnName("estado");
+            entity.Property(e => e.Foto)
+                .HasMaxLength(100)
+                .HasColumnName("foto");
             entity.Property(e => e.Marca)
                 .HasMaxLength(20)
                 .HasColumnName("marca");

@@ -184,5 +184,6 @@ namespace backend.Models.Responses
         public ConductorDto? Conductor { get; set; }
         public ConductorDto? Propietario { get; set; }
         public DistribucionDto? Distribucion { get; set; }
+        public string? Foto { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using Microsoft.AspNetCore.Hosting;
 
 namespace backend.Controllers
 {
@@ -9,10 +10,12 @@ namespace backend.Controllers
     public class ConductoresController : ControllerBase
     {
         private readonly TransporteContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public ConductoresController(TransporteContext context)
+        public ConductoresController(TransporteContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // GET: api/conductores
@@ -40,8 +43,26 @@ namespace backend.Controllers
 
         // POST: api/conductores
         [HttpPost]
-        public async Task<ActionResult<Conductor>> PostConductor(Conductor conductor)
+        public async Task<ActionResult<Conductor>> PostConductor([FromForm] Conductor conductor, IFormFile? foto_licencia)
         {
+            if (foto_licencia != null && foto_licencia.Length > 0)
+            {
+                var folderPath = Path.Combine(_env.ContentRootPath, "assets/licencias");
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                // Nombre único con fecha y hora
+                var fileName = DateTime.Now.ToString("yyyyMMddHHmmss") + Path.GetExtension(foto_licencia.FileName);
+                var filePath = Path.Combine(folderPath, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await foto_licencia.CopyToAsync(stream);
+                }
+
+                conductor.FotoLicencia = fileName; // Guardamos solo el nombre en BD
+            }
+
             _context.Conductors.Add(conductor);
             await _context.SaveChangesAsync();
 
@@ -50,30 +71,41 @@ namespace backend.Controllers
 
         // PUT: api/conductores/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutConductor(int id, Conductor conductor)
+        public async Task<IActionResult> PutConductor(int id, [FromForm] Conductor conductor, IFormFile? foto_licencia)
         {
             if (id != conductor.Id)
-            {
                 return BadRequest();
+
+            var existing = await _context.Conductors.FindAsync(id);
+            if (existing == null)
+                return NotFound();
+
+            // Actualizar campos básicos
+            existing.Nombres = conductor.Nombres;
+            existing.Apellidos = conductor.Apellidos;
+            existing.Telefono = conductor.Telefono;
+            existing.Categoria = conductor.Categoria;
+            existing.Estado = conductor.Estado;
+
+            if (foto_licencia != null && foto_licencia.Length > 0)
+            {
+                var folderPath = Path.Combine(_env.ContentRootPath, "assets/licencias/");
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                var fileName = DateTime.Now.ToString("yyyyMMddHHmmss") + Path.GetExtension(foto_licencia.FileName);
+                var filePath = Path.Combine(folderPath, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await foto_licencia.CopyToAsync(stream);
+                }
+
+                existing.FotoLicencia = fileName;
             }
 
-            _context.Entry(conductor).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Conductors.Any(e => e.Id == id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            _context.Entry(existing).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }

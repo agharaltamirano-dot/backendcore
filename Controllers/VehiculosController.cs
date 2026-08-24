@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using backend.Models.Responses;
+using Microsoft.AspNetCore.Hosting;
 
 namespace backend.Controllers
 {
@@ -11,9 +12,12 @@ namespace backend.Controllers
     {
         private readonly TransporteContext _context;
 
-        public VehiculosController(TransporteContext context)
+        private readonly IWebHostEnvironment _env;
+
+        public VehiculosController(TransporteContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // GET: api/vehiculos
@@ -38,6 +42,7 @@ namespace backend.Controllers
                 Color = v.Color,
                 Tipo = v.Tipo,
                 Soat = v.Soat,
+                Foto = v.Foto,
                 Aseguradora = v.Aseguradora,
                 Conductor = v.Conductor == null ? null : new ConductorDto { Id = v.Conductor.Id, Nombres = v.Conductor.Nombres, Apellidos = v.Conductor.Apellidos, Telefono = v.Conductor.Telefono },
                 Propietario = v.Propietario == null ? null : new ConductorDto { Id = v.Propietario.Id, Nombres = v.Propietario.Nombres, Apellidos = v.Propietario.Apellidos, Telefono = v.Propietario.Telefono },
@@ -87,8 +92,26 @@ namespace backend.Controllers
 
         // POST: api/vehiculos
         [HttpPost]
-        public async Task<ActionResult<Vehiculo>> PostVehiculo(Vehiculo vehiculo)
+        public async Task<ActionResult<Vehiculo>> PostVehiculo([FromForm] Vehiculo vehiculo, IFormFile? foto)
         {
+            if (foto != null && foto.Length > 0)
+            {
+                var folderPath = Path.Combine(_env.ContentRootPath, "assets/vehiculos");
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                // Nombre único con fecha y hora
+                var fileName = DateTime.Now.ToString("yyyyMMddHHmmss") + Path.GetExtension(foto.FileName);
+                var filePath = Path.Combine(folderPath, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await foto.CopyToAsync(stream);
+                }
+
+                vehiculo.Foto = fileName; // Guardamos solo el nombre en BD
+            }
+
             _context.Vehiculos.Add(vehiculo);
             await _context.SaveChangesAsync();
 
@@ -97,30 +120,49 @@ namespace backend.Controllers
 
         // PUT: api/vehiculos/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutVehiculo(int id, Vehiculo vehiculo)
+        public async Task<IActionResult> PutVehiculo(int id, [FromForm] Vehiculo vehiculo, IFormFile? foto)
         {
             if (id != vehiculo.Id)
-            {
                 return BadRequest();
+
+            var existing = await _context.Vehiculos.FindAsync(id);
+            if (existing == null)
+                return NotFound();
+
+            // Actualizar campos básicos
+            existing.Movil = vehiculo.Movil;
+            existing.Placa = vehiculo.Placa;
+            existing.Marca = vehiculo.Marca;
+            existing.Modelo = vehiculo.Modelo;
+            existing.Color = vehiculo.Color;
+            existing.Tipo = vehiculo.Tipo;
+            existing.Soat = vehiculo.Soat;
+            existing.Aseguradora = vehiculo.Aseguradora;
+            existing.ConductorId = vehiculo.ConductorId;
+            existing.PropietarioId = vehiculo.PropietarioId;
+            existing.Estado = vehiculo.Estado;
+            existing.Activo = vehiculo.Activo;
+            existing.DistribucionId = vehiculo.DistribucionId;
+
+            if (foto != null && foto.Length > 0)
+            {
+                var folderPath = Path.Combine(_env.ContentRootPath, "assets/vehiculos");
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                var fileName = DateTime.Now.ToString("yyyyMMddHHmmss") + Path.GetExtension(foto.FileName);
+                var filePath = Path.Combine(folderPath, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await foto.CopyToAsync(stream);
+                }
+
+                existing.Foto = fileName;
             }
 
-            _context.Entry(vehiculo).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Vehiculos.Any(e => e.Id == id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            _context.Entry(existing).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }
