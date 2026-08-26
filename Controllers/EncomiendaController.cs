@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using backend.Models.Responses;
+using System.Text.Json;
 
 namespace backend.Controllers
 {
@@ -83,6 +84,119 @@ public async Task<ActionResult> PostEncomienda([FromBody] Encomiendum encomienda
 
     return CreatedAtAction(nameof(GetEncomiendas), new { id = encomienda.Id }, encomienda);
 }
+// PUT: api/encomienda/5
+[HttpPut("{id}")]
+[Consumes("application/json")]
+public async Task<IActionResult> PutEncomienda(int id, [FromBody] Encomiendum dto)
+{
+    try
+    {
+        var encomienda = await _context.Encomienda
+            .Include(e => e.ClienteRemitente)
+            .Include(e => e.ClienteConsignatario)
+            .Include(e => e.Usuario)
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        if (encomienda == null)
+            return NotFound(new { mensaje = "Encomienda no encontrada." });
+
+        // Manejo de ClienteRemitente
+        if (dto.ClienteRemitenteId == null && dto.ClienteRemitente != null)
+        {
+            var newCliente = new Cliente
+            {
+                NombreCompleto = dto.ClienteRemitente.NombreCompleto,
+                Ci = dto.ClienteRemitente.Ci,
+                Telefono = dto.ClienteRemitente.Telefono,
+                Estado = dto.ClienteRemitente.Estado
+            };
+            _context.Clientes.Add(newCliente);
+            await _context.SaveChangesAsync();
+            encomienda.ClienteRemitenteId = newCliente.Id;
+        }
+        else if (dto.ClienteRemitenteId.HasValue)
+        {
+            encomienda.ClienteRemitenteId = dto.ClienteRemitenteId;
+        }
+
+        // Manejo de ClienteConsignatario
+        if (dto.ClienteConsignatarioId == null && dto.ClienteConsignatario != null)
+        {
+            var newCliente = new Cliente
+            {
+                NombreCompleto = dto.ClienteConsignatario.NombreCompleto,
+                Ci = dto.ClienteConsignatario.Ci,
+                Telefono = dto.ClienteConsignatario.Telefono,
+                Estado = dto.ClienteConsignatario.Estado
+            };
+            _context.Clientes.Add(newCliente);
+            await _context.SaveChangesAsync();
+            encomienda.ClienteConsignatarioId = newCliente.Id;
+        }
+        else if (dto.ClienteConsignatarioId.HasValue)
+        {
+            encomienda.ClienteConsignatarioId = dto.ClienteConsignatarioId;
+        }
+
+        // Actualizar campos
+        encomienda.Contenido = dto.Contenido;
+        encomienda.FechaRecepcion = dto.FechaRecepcion;
+        encomienda.FechaEntrega = dto.FechaEntrega;
+        encomienda.Monto = dto.Monto;
+        encomienda.Estado = dto.Estado;
+        encomienda.Pagado = dto.Pagado;
+        encomienda.Destino = dto.Destino;
+        encomienda.UsuarioId = dto.UsuarioId;
+
+        await _context.SaveChangesAsync();
+
+        // Proyección a DTO para evitar ciclos
+        var result = new EncomiendaListDto
+        {
+            Id = encomienda.Id,
+            Contenido = encomienda.Contenido,
+            FechaRecepcion = encomienda.FechaRecepcion,
+            FechaEntrega = encomienda.FechaEntrega,
+            Monto = encomienda.Monto,
+            Numero = encomienda.Numero,
+            Estado = encomienda.Estado,
+            Pagado = encomienda.Pagado,
+            Destino = encomienda.Destino,
+            ClienteRemitente = encomienda.ClienteRemitente == null ? null : new ClienteDto
+            {
+                Id = encomienda.ClienteRemitente.Id,
+                NombreCompleto = encomienda.ClienteRemitente.NombreCompleto,
+                Ci = encomienda.ClienteRemitente.Ci,
+                Telefono = encomienda.ClienteRemitente.Telefono,
+                Estado = encomienda.ClienteRemitente.Estado
+            },
+            ClienteConsignatario = encomienda.ClienteConsignatario == null ? null : new ClienteDto
+            {
+                Id = encomienda.ClienteConsignatario.Id,
+                NombreCompleto = encomienda.ClienteConsignatario.NombreCompleto,
+                Ci = encomienda.ClienteConsignatario.Ci,
+                Telefono = encomienda.ClienteConsignatario.Telefono,
+                Estado = encomienda.ClienteConsignatario.Estado
+            },
+            Usuario = encomienda.Usuario == null ? null : new UsuarioDto
+            {
+                Id = encomienda.Usuario.Id,
+                Usuario = encomienda.Usuario.Usuario1,
+                PuntoVentaId = encomienda.Usuario.PuntoVentaId,
+                RolId = encomienda.Usuario.RolId
+            }
+        };
+
+        return Ok(new { mensaje = "Encomienda actualizada correctamente", encomienda = result });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { mensaje = "Error interno procesando la encomienda.", detalle = ex.Message });
+    }
+}
+
+
+
 
 
     }

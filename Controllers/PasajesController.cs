@@ -341,26 +341,88 @@ namespace backend.Controllers
             }
         }
 
-        // PUT: api/pasajes/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutPasaje(int id, Pasaje pasaje)
+       // PUT: api/pasajes/5
+[HttpPut("{id}")]
+[Consumes("application/json")]
+public async Task<IActionResult> PutPasaje(int id, [FromBody] JsonElement raw)
+{
+    try
+    {
+        var rawText = raw.GetRawText();
+        System.Console.WriteLine("----- RAW BODY RECEIVED (PUT) -----");
+        System.Console.WriteLine(rawText);
+
+        var dto = JsonSerializer.Deserialize<PasajeCreateDto>(rawText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (dto == null) return BadRequest(new { mensaje = "No se pudo deserializar a PasajeCreateDto." });
+
+        var pasaje = await _context.Pasajes.FindAsync(id);
+        if (pasaje == null) return NotFound(new { mensaje = "Pasaje no encontrado." });
+
+        // Manejo de cliente (igual que en POST)
+        int? clienteId = pasaje.ClienteId;
+        if (dto.Cliente != null)
         {
-            if (id != pasaje.Id) return BadRequest();
-
-            _context.Entry(pasaje).State = EntityState.Modified;
-
-            try
+            if (dto.Cliente.Id.HasValue && dto.Cliente.Id.Value > 0)
             {
-                await _context.SaveChangesAsync();
+                var existing = await _context.Clientes.FindAsync(dto.Cliente.Id.Value);
+                if (existing == null) return BadRequest("Cliente no encontrado");
+                clienteId = existing.Id;
             }
-            catch (DbUpdateConcurrencyException)
+            else
             {
-                if (!_context.Pasajes.Any(e => e.Id == id)) return NotFound();
-                else throw;
-            }
+                var incomingNorm = NormalizeName(dto.Cliente.NombreCompleto);
+                Cliente? foundByName = null;
+                if (!string.IsNullOrEmpty(incomingNorm))
+                {
+                    var allClients = await _context.Clientes.ToListAsync();
+                    foundByName = allClients.FirstOrDefault(c => !string.IsNullOrEmpty(c.NombreCompleto) && NormalizeName(c.NombreCompleto) == incomingNorm);
+                }
 
-            return Ok(pasaje);
+                if (foundByName != null)
+                {
+                    clienteId = foundByName.Id;
+                }
+                else
+                {
+                    var newCliente = new Cliente
+                    {
+                        NombreCompleto = CleanDisplayName(dto.Cliente.NombreCompleto),
+                        Ci = dto.Cliente.Ci,
+                        Telefono = dto.Cliente.Telefono,
+                        Estado = dto.Cliente.Estado
+                    };
+                    _context.Clientes.Add(newCliente);
+                    await _context.SaveChangesAsync();
+                    clienteId = newCliente.Id;
+                }
+            }
         }
+
+        // Actualizar campos del pasaje
+        pasaje.FechaHora = dto.FechaHora;
+        pasaje.Monto = dto.Monto;
+        pasaje.Movil = dto.Movil;
+        pasaje.Estado = dto.Estado;
+        pasaje.Destino = dto.Destino;
+        pasaje.AsientoId = dto.AsientoId;
+        pasaje.HorarioId = dto.HorarioId;
+        pasaje.UsuarioId = dto.UsuarioId;
+        pasaje.ClienteId = clienteId;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { mensaje = "Pasaje actualizado correctamente", pasaje });
+    }
+    catch (JsonException jex)
+    {
+        return BadRequest(new { mensaje = "JSON inválido.", detalle = jex.Message });
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(new { mensaje = "Error interno procesando el PUT.", detalle = ex.Message });
+    }
+}
+
 
         // DELETE: api/pasajes/5
         [HttpDelete("{id}")]
