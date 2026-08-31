@@ -17,37 +17,128 @@ public class reporteConductorController : ControllerBase
     public reporteConductorController(TransporteContext context) => _context = context;
 
     [HttpGet("{conductorId}/pdf")]
-    [AllowAnonymous]
-    public async Task<IActionResult> Pdf(int conductorId, [FromQuery] string? fechaInicio, [FromQuery] string? fechaFin, [FromQuery] int? destinoId, [FromQuery] int? horarioId, [FromQuery] string? nombreUsuario)
+[AllowAnonymous]
+public async Task<IActionResult> Pdf(int conductorId, [FromQuery] string? fechaInicio, [FromQuery] string? fechaFin, [FromQuery] int? destinoId, [FromQuery] int? horarioId, [FromQuery] string? nombreUsuario)
+{
+    var r = await Consultar(conductorId, fechaInicio, fechaFin, destinoId, horarioId);
+    if (r.Error != null) return BadRequest(r.Error);
+    if (r.Conductor == null) return NotFound("Conductor no encontrado.");
+
+    using var doc = new PdfDocument();
+    XGraphics? g = null;
+    double y = 0, w = 0, h = 0;
+    const double m = 28;
+
+    var title = new XFont("Arial", 15, XFontStyle.Bold, new XPdfFontOptions(PdfFontEncoding.Unicode));
+    var meta = new XFont("Arial", 8, XFontStyle.Regular, new XPdfFontOptions(PdfFontEncoding.Unicode));
+    var sub = new XFont("Arial", 10, XFontStyle.Bold, new XPdfFontOptions(PdfFontEncoding.Unicode));
+    var head = new XFont("Arial", 7, XFontStyle.Bold, new XPdfFontOptions(PdfFontEncoding.Unicode));
+    var body = new XFont("Arial", 6.5, XFontStyle.Regular, new XPdfFontOptions(PdfFontEncoding.Unicode));
+    var logo = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
+
+    void TableHeader()
     {
-        var r = await Consultar(conductorId, fechaInicio, fechaFin, destinoId, horarioId); if (r.Error != null) return BadRequest(r.Error);
-        if (r.Conductor == null) return NotFound("Conductor no encontrado.");
-        
-        using var doc = new PdfDocument(); XGraphics? g = null; double y = 0, w = 0, h = 0; const double m = 28;
-        var title = new XFont("Arial", 15, XFontStyle.Bold, new XPdfFontOptions(PdfFontEncoding.Unicode)); var meta = new XFont("Arial", 8, XFontStyle.Regular, new XPdfFontOptions(PdfFontEncoding.Unicode)); var sub = new XFont("Arial", 10, XFontStyle.Bold, new XPdfFontOptions(PdfFontEncoding.Unicode)); var head = new XFont("Arial", 7, XFontStyle.Bold, new XPdfFontOptions(PdfFontEncoding.Unicode)); var body = new XFont("Arial", 6.5, XFontStyle.Regular, new XPdfFontOptions(PdfFontEncoding.Unicode)); var logo = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo9.png");
-        void TableHeader() { var x = m; foreach (var c in Cols()) { g!.DrawRectangle(XBrushes.LightGray, x, y, c.W, 16); g.DrawString(c.N, head, XBrushes.Black, new XRect(x + 2, y + 3, c.W - 4, 10), XStringFormats.TopLeft); x += c.W; } y += 16; }
-        void Page() { g?.Dispose(); var p = doc.AddPage(); p.Size = PdfSharpCore.PageSize.Letter; p.Orientation = PdfSharpCore.PageOrientation.Landscape; g = XGraphics.FromPdfPage(p); w = p.Width.Point; h = p.Height.Point; y = m; g.DrawString($"Reporte de encomiendas - {r.Conductor.Nombres} {r.Conductor.Apellidos}", title, XBrushes.Black, new XRect(m, y, 400, 22), XStringFormats.TopLeft); if (System.IO.File.Exists(logo)) { using var img = XImage.FromFile(logo); g.DrawImage(img, w - m - 62, y, 62, 42); } y += 24; g.DrawString($"Generado por: {nombreUsuario ?? "No especificado"}", meta, XBrushes.Black, new XRect(w - m - 250, y, 250, 12), XStringFormats.TopRight); g.DrawString($"Fecha de generación: {DateTime.Now:dd/MM/yyyy HH:mm}", meta, XBrushes.Black, new XRect(w - m - 250, y + 11, 250, 12), XStringFormats.TopRight); y += 27; g.DrawString(r.Filtros.Count == 0 ? "Criterios: sin filtros" : "Criterios: " + string.Join(" | ", r.Filtros), meta, XBrushes.Black, new XRect(m, y, w - m * 2, 28), XStringFormats.TopLeft); y += 30; }
-        void ConductorHeader() { if (y + 36 > h - m) Page(); g!.DrawString($"Conductor: {r.Conductor.Nombres} {r.Conductor.Apellidos} | Teléfono: {r.Conductor.Telefono ?? ""} | Licencia: {r.Conductor.Licencia ?? ""}", sub, XBrushes.Black, new XRect(m, y, w - 2 * m, 16), XStringFormats.TopLeft); y += 18; TableHeader(); }
-        
-        Page(); ConductorHeader();
-        foreach (var envio in r.Envios) 
-        { 
-            if (y + 22 > h - m) { Page(); ConductorHeader(); } 
-            var x = m; var v = Values(envio); 
-            foreach (var c in Cols()) { g!.DrawRectangle(XPens.LightGray, x, y, c.W, 22); g.DrawString(v[c.I], body, XBrushes.Black, new XRect(x + 2, y + 2, c.W - 4, 18), XStringFormats.TopLeft); x += c.W; } 
-            y += 22; 
+        var x = m;
+        foreach (var c in Cols())
+        {
+            g!.DrawRectangle(XBrushes.LightGray, x, y, c.W, 16);
+            g.DrawString(c.N, head, XBrushes.Black, new XRect(x + 2, y + 3, c.W - 4, 10), XStringFormats.TopLeft);
+            x += c.W;
         }
-        
-        var total = r.Envios.Sum(e => e.Encomienda?.Monto ?? 0); 
-        var pagado = r.Envios.Where(e => e.Encomienda?.Pagado == true).Sum(e => e.Encomienda?.Monto ?? 0); 
-        var pendiente = r.Envios.Where(e => e.Encomienda?.Pagado == false).Sum(e => e.Encomienda?.Monto ?? 0); 
-        if (y + 18 > h - m) Page(); 
-        g!.DrawString($"Resumen: Total Bs {total:N2} | Pagado Bs {pagado:N2} | Pendiente Bs {pendiente:N2}", head, XBrushes.Black, new XRect(m, y + 3, w - 2 * m, 14), XStringFormats.TopLeft); 
-        
-        g?.Dispose(); using var ms = new MemoryStream(); doc.Save(ms, false); 
-        Response.Headers["Content-Disposition"] = $"inline; filename=\"reporte_conductor_{conductorId}.pdf\""; 
-        return File(ms.ToArray(), "application/pdf");
+        y += 16;
     }
+
+    void Page()
+    {
+        g?.Dispose();
+        var p = doc.AddPage();
+        p.Size = PdfSharpCore.PageSize.Letter;
+        p.Orientation = PdfSharpCore.PageOrientation.Landscape;
+        g = XGraphics.FromPdfPage(p);
+        w = p.Width.Point;
+        h = p.Height.Point;
+        y = m;
+
+        // Logo a la izquierda
+        if (System.IO.File.Exists(logo))
+        {
+            using var img = XImage.FromFile(logo);
+            g.DrawImage(img, m, y, 70, 50);
+        }
+
+        // Título al lado del logo
+        g.DrawString($"Reporte de encomiendas - {r.Conductor.Nombres} {r.Conductor.Apellidos}",
+            title, XBrushes.Black, new XRect(m + 80, y + 10, 400, 22), XStringFormats.TopLeft);
+
+        // Datos de usuario y fecha a la derecha
+        g.DrawString($"Generado por: {nombreUsuario ?? "No especificado"}", meta, XBrushes.Black,
+            new XRect(w - m - 250, y, 250, 12), XStringFormats.TopRight);
+        g.DrawString($"Fecha de generación: {DateTime.Now:dd/MM/yyyy HH:mm}", meta, XBrushes.Black,
+            new XRect(w - m - 250, y + 11, 250, 12), XStringFormats.TopRight);
+
+        y += 60;
+        g.DrawString(r.Filtros.Count == 0 ? "Criterios: sin filtros" : "Criterios: " + string.Join(" | ", r.Filtros),
+            meta, XBrushes.Black, new XRect(m, y, w - m * 2, 28), XStringFormats.TopLeft);
+
+        y += 30;
+    }
+
+    void ConductorHeader()
+    {
+        if (y + 36 > h - m) Page();
+        g!.DrawString($"Conductor: {r.Conductor.Nombres} {r.Conductor.Apellidos} | Teléfono: {r.Conductor.Telefono ?? ""} | Licencia: {r.Conductor.Licencia ?? ""}",
+            sub, XBrushes.Black, new XRect(m, y, w - 2 * m, 16), XStringFormats.TopLeft);
+        y += 18;
+        TableHeader();
+    }
+
+    Page();
+    ConductorHeader();
+
+    foreach (var envio in r.Envios)
+    {
+        if (y + 22 > h - m) { Page(); ConductorHeader(); }
+        var x = m;
+        var v = Values(envio);
+
+        foreach (var c in Cols())
+        {
+            g!.DrawRectangle(XPens.LightGray, x, y, c.W, 22);
+
+            // Si envio == null, dejar vacío en Fecha Envío
+            string texto = v[c.I];
+            if (c.N == "Fecha Envío" && envio.Encomienda == null)
+                texto = "";
+
+            // Columna Horario vacía de momento
+            if (c.N == "Horario")
+                texto = "";
+
+            // Usar XTextFormatter para salto de línea
+            var rect = new XRect(x + 2, y + 2, c.W - 4, 18);
+            var tf = new PdfSharpCore.Drawing.Layout.XTextFormatter(g);
+            tf.DrawString(texto, body, XBrushes.Black, rect, XStringFormats.TopLeft);
+
+            x += c.W;
+        }
+        y += 22;
+    }
+
+    var total = r.Envios.Sum(e => e.Encomienda?.Monto ?? 0);
+    var pagado = r.Envios.Where(e => e.Encomienda?.Pagado == true).Sum(e => e.Encomienda?.Monto ?? 0);
+    var pendiente = r.Envios.Where(e => e.Encomienda?.Pagado == false).Sum(e => e.Encomienda?.Monto ?? 0);
+
+    if (y + 18 > h - m) Page();
+    g!.DrawString($"Resumen: Total Bs {total:N2} | Pagado Bs {pagado:N2} | Pendiente Bs {pendiente:N2}",
+        head, XBrushes.Black, new XRect(m, y + 3, w - 2 * m, 14), XStringFormats.TopLeft);
+
+    g?.Dispose();
+    using var ms = new MemoryStream();
+    doc.Save(ms, false);
+    Response.Headers["Content-Disposition"] = $"inline; filename=\"reporte_conductor_{conductorId}.pdf\"";
+    return File(ms.ToArray(), "application/pdf");
+}
+
 
     [HttpGet("{conductorId}/xlsx")]
     [AllowAnonymous]
@@ -130,7 +221,7 @@ public class reporteConductorController : ControllerBase
             : "Reporte detallado por conductor"; 
         s.Cell("A1").Style.Font.Bold = true; 
         s.Cell("A1").Style.Font.FontSize = 16; 
-        var p = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo9.png"); 
+        var p = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg"); 
         if (System.IO.File.Exists(p)) s.AddPicture(p).MoveTo(s.Cell("J1")).WithSize(110, 70); 
         s.Range("H3:J3").Merge(); 
         s.Range("H4:J4").Merge(); 

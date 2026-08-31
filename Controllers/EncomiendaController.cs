@@ -24,28 +24,37 @@ namespace backend.Controllers
         public async Task<ActionResult<IEnumerable<EncomiendaListDto>>> GetEncomiendas()
         {
             var list = await _context.Encomienda
-                .Include(e => e.ClienteRemitente)
-                .Include(e => e.ClienteConsignatario)
-                .Include(e => e.Usuario)
-                .ToListAsync();
+    .Include(e => e.ClienteRemitente)
+    .Include(e => e.ClienteConsignatario)
+    .Include(e => e.Usuario)
+    .Include(e => e.Envios) // colección
+    .ToListAsync();
 
-            var result = list.Select(e => new EncomiendaListDto
-            {
-                Id = e.Id,
-                Contenido = e.Contenido,
-                FechaRecepcion = e.FechaRecepcion,
-                FechaEntrega = e.FechaEntrega,
-                Monto = e.Monto,
-                Numero = e.Numero,
-                Estado = e.Estado,
-                Pagado = e.Pagado,
-                Destino = e.Destino,
-                ClienteRemitente = e.ClienteRemitente == null ? null : new ClienteDto { Id = e.ClienteRemitente.Id, NombreCompleto = e.ClienteRemitente.NombreCompleto, Ci = e.ClienteRemitente.Ci, Telefono = e.ClienteRemitente.Telefono, Estado = e.ClienteRemitente.Estado },
-                ClienteConsignatario = e.ClienteConsignatario == null ? null : new ClienteDto { Id = e.ClienteConsignatario.Id, NombreCompleto = e.ClienteConsignatario.NombreCompleto, Ci = e.ClienteConsignatario.Ci, Telefono = e.ClienteConsignatario.Telefono, Estado = e.ClienteConsignatario.Estado },
-                Usuario = e.Usuario == null ? null : new UsuarioDto { Id = e.Usuario.Id, Usuario = e.Usuario.Usuario1, PuntoVentaId = e.Usuario.PuntoVentaId, RolId = e.Usuario.RolId }
-            }).Reverse().ToList();
+var result = list.Select(e => new EncomiendaListDto
+{
+    Id = e.Id,
+    Contenido = e.Contenido,
+    FechaRecepcion = e.FechaRecepcion,
+    FechaEntrega = e.FechaEntrega,
+    Monto = e.Monto,
+    Numero = e.Numero,
+    Estado = e.Estado,
+    Pagado = e.Pagado,
+    Destino = e.Destino,
+    ClienteRemitente = e.ClienteRemitente == null ? null : new ClienteDto { Id = e.ClienteRemitente.Id, NombreCompleto = e.ClienteRemitente.NombreCompleto, Ci = e.ClienteRemitente.Ci, Telefono = e.ClienteRemitente.Telefono, Estado = e.ClienteRemitente.Estado },
+    ClienteConsignatario = e.ClienteConsignatario == null ? null : new ClienteDto { Id = e.ClienteConsignatario.Id, NombreCompleto = e.ClienteConsignatario.NombreCompleto, Ci = e.ClienteConsignatario.Ci, Telefono = e.ClienteConsignatario.Telefono, Estado = e.ClienteConsignatario.Estado },
+    Usuario = e.Usuario == null ? null : new UsuarioDto { Id = e.Usuario.Id, Usuario = e.Usuario.Usuario1, PuntoVentaId = e.Usuario.PuntoVentaId, RolId = e.Usuario.RolId },
+    Envio = e.Envios.FirstOrDefault() == null ? null : new EnvioDto
+    {
+        Id = e.Envios.FirstOrDefault().Id,
+        Fecha = e.Envios.FirstOrDefault().Fecha,
+        ConductorId = e.Envios.FirstOrDefault().ConductorId,
+        HorarioId = e.Envios.FirstOrDefault().HorarioId
+    }
+}).Reverse().ToList();
 
-            return Ok(result);
+return Ok(result);
+
         }
         // POST: api/encomienda
 [HttpPost]
@@ -192,6 +201,31 @@ public async Task<IActionResult> PutEncomienda(int id, [FromBody] Encomiendum dt
     catch (Exception ex)
     {
         return StatusCode(500, new { mensaje = "Error interno procesando la encomienda.", detalle = ex.Message });
+    }
+}
+// PUT: api/encomienda/entregar/5
+[HttpPut("entregar/{id}")]
+public async Task<IActionResult> EntregarEncomienda(int id, [FromBody] String fechaEntrega)
+{
+    try
+    {
+        Console.WriteLine("Entregando encomienda con ID: " + id);
+        Console.WriteLine("Fecha de entrega: " + fechaEntrega);
+        var encomienda = await _context.Encomienda.FindAsync(id);
+
+        if (encomienda == null)
+            return NotFound(new { mensaje = "Encomienda no encontrada." });
+
+        // Actualizar solo la fechaEntrega
+        encomienda.FechaEntrega = fechaEntrega;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { mensaje = " Encomienda entregada correctamente", id = encomienda.Id, fechaEntrega = encomienda.FechaEntrega });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { mensaje = "Error interno al entregar la encomienda.", detalle = ex.Message });
     }
 }
 

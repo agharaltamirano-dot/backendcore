@@ -40,4 +40,8 @@ public partial class Encomiendum
     public virtual Usuario? Usuario { get; set; }
 
     public virtual Usuario? UsuarioAnula { get; set; }
+
+    // public virtual Envio? Envio { get; set; } // <-- eliminado porque ya tenemos la colección Envios
+
+    // public virtual ICollection<Envio> Envios { get; set; } = new List<Envio>();
 }

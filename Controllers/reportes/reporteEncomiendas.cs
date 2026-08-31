@@ -62,7 +62,7 @@ namespace backend.Controllers.reportes
             var filtroFont = new XFont("Arial", 7, XFontStyle.Regular, new XPdfFontOptions(PdfFontEncoding.Unicode));
             var encabezadoFont = new XFont("Arial", 7, XFontStyle.Bold, new XPdfFontOptions(PdfFontEncoding.Unicode));
             var contenidoFont = new XFont("Arial", 6.5, XFontStyle.Regular, new XPdfFontOptions(PdfFontEncoding.Unicode));
-            var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo9.png");
+            var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
 
             void CrearPagina()
             {
@@ -166,7 +166,7 @@ namespace backend.Controllers.reportes
             hoja.Cell("A1").Style.Font.FontSize = 16;
             hoja.Cell("A1").Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
 
-            var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo9.png");
+            var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
             if (System.IO.File.Exists(logoPath))
                 hoja.AddPicture(logoPath).MoveTo(hoja.Cell("J1")).WithSize(110, 70);
 
@@ -270,5 +270,36 @@ namespace backend.Controllers.reportes
             public List<string> Filtros { get; set; } = [];
             public string? Error { get; set; }
         }
+        private static (string N, double W, int I)[] Cols() =>
+[
+    ("N°", 30, 0),
+    ("ID", 40, 1),
+    ("Fecha/Hora", 80, 2),
+    ("Destino", 65, 3),
+    ("Móvil", 48, 4),
+    ("Monto (Bs)", 55, 5),
+    ("Estado", 45, 6),
+    ("Reserva", 45, 7),
+    ("Cliente", 90, 8),
+    ("Teléfono", 68, 9),
+    ("Asiento", 45, 10),
+    ("Usuario", 55, 11)
+];
+private static string[] Values(Pasaje p, int index) =>
+[
+    index.ToString(),
+    p.Id.ToString(),
+    p.FechaHora ?? "",
+    p.Destino ?? "",
+    p.Movil ?? "",
+    p.Monto?.ToString("N2", CultureInfo.InvariantCulture) ?? "",
+    p.Estado == true ? "Activo" : "Anulado",
+    p.Reserva == true ? "Sí" : "No",
+    p.Cliente?.NombreCompleto ?? "",
+    p.Cliente?.Telefono ?? "",
+    p.Asiento?.Numero?.ToString() ?? "",
+    p.Usuario?.Usuario1 ?? ""
+];
+
     }
     }

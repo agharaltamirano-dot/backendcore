@@ -208,31 +208,30 @@ public partial class TransporteContext : DbContext
         });
 
         modelBuilder.Entity<Envio>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("envio_pkey");
+{
+    entity.HasKey(e => e.Id).HasName("envio_pkey");
 
-            entity.ToTable("envio");
+    entity.ToTable("envio");
 
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.ConductorId).HasColumnName("conductor_id");
-            entity.Property(e => e.EncomiendaId).HasColumnName("encomienda_id");
-            entity.Property(e => e.Fecha)
-                .HasMaxLength(20)
-                .HasColumnName("fecha");
-            entity.Property(e => e.HorarioId).HasColumnName("horario_id");
+    entity.Property(e => e.Id).HasColumnName("id");
+    entity.Property(e => e.ConductorId).HasColumnName("conductor_id");
+    entity.Property(e => e.EncomiendaId).HasColumnName("encomienda_id");
+    entity.Property(e => e.Fecha).HasMaxLength(20).HasColumnName("fecha");
+    entity.Property(e => e.HorarioId).HasColumnName("horario_id");
 
-            entity.HasOne(d => d.Conductor).WithMany(p => p.Envios)
-                .HasForeignKey(d => d.ConductorId)
-                .HasConstraintName("envio_conductor_id_fkey");
+    entity.HasOne(d => d.Conductor).WithMany(p => p.Envios)
+        .HasForeignKey(d => d.ConductorId)
+        .HasConstraintName("envio_conductor_id_fkey");
 
-            entity.HasOne(d => d.Encomienda).WithMany(p => p.Envios)
-                .HasForeignKey(d => d.EncomiendaId)
-                .HasConstraintName("envio_encomienda_id_fkey");
+    entity.HasOne(d => d.Encomienda).WithMany(p => p.Envios) // <-- correcto
+        .HasForeignKey(d => d.EncomiendaId)
+        .HasConstraintName("envio_encomienda_id_fkey");
 
-            entity.HasOne(d => d.Horario).WithMany(p => p.Envios)
-                .HasForeignKey(d => d.HorarioId)
-                .HasConstraintName("envio_horario_id_fkey");
-        });
+    entity.HasOne(d => d.Horario).WithMany(p => p.Envios)
+        .HasForeignKey(d => d.HorarioId)
+        .HasConstraintName("envio_horario_id_fkey");
+});
+
 
         modelBuilder.Entity<Horario>(entity =>
         {

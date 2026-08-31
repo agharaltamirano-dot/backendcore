@@ -89,7 +89,7 @@ namespace backend.Controllers
 }
 
 // cargar la imagen desde tu carpeta assets
-var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo9.png");
+var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
 if (System.IO.File.Exists(logoPath))
 {
     var logo = XImage.FromFile(logoPath);
@@ -221,7 +221,7 @@ if (System.IO.File.Exists(logoPath))
                     y += 14;
                 }
                 // cargar la imagen desde tu carpeta assets
-var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo9.png");
+var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
 if (System.IO.File.Exists(logoPath))
 {
     var logo = XImage.FromFile(logoPath);

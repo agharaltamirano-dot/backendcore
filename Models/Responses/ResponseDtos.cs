@@ -81,11 +81,19 @@ namespace backend.Models.Responses
         public string? Destino { get; set; }
         public bool? Estado { get; set; }
         public bool? Pagado { get; set; }
+        public EnvioDto? Envio { get; set; }
         public ClienteDto? ClienteRemitente { get; set; }
         public ClienteDto? ClienteConsignatario { get; set; }
         public UsuarioDto? Usuario { get; set; }
     }
-
+public class EnvioDto
+{
+    public int Id { get; set; }
+    public string? Fecha { get; set; }
+    public int? ConductorId { get; set; }
+    public int? HorarioId { get; set; }
+}
+    
     public class UsuarioDto
     {
         public int Id { get; set; }
@@ -110,7 +118,21 @@ namespace backend.Models.Responses
         public double? Tarifa { get; set; }
         public PuntoVentaDto? PuntoVenta { get; set; }
     }
-
+public class DestinoWriteDto
+{
+    public int Id { get; set; }           // opcional, para PUT
+    public bool? EsOrigen { get; set; }
+    public int? Orden { get; set; }
+    public double? Tarifa { get; set; }
+    public int PuntoVentaId { get; set; } // aquí usas solo el id
+}
+public class RutaWriteDto
+{
+    public string? Dias { get; set; }
+    public int? Tarifa { get; set; }
+    public bool? Estado { get; set; }
+    public List<DestinoWriteDto>? Destinos { get; set; } // para POST/PUT
+}
     public class PuntoVentaDto
     {
         public int Id { get; set; }

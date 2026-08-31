@@ -63,7 +63,7 @@ namespace backend.Controllers
         // POST: api/rutas
         // POST: api/rutas
 [HttpPost]
-public async Task<ActionResult<Rutum>> PostRuta(RutaDto dto)
+public async Task<ActionResult<Rutum>> PostRuta(RutaWriteDto dto)
 {
     var ruta = new Rutum
     {
@@ -74,7 +74,8 @@ public async Task<ActionResult<Rutum>> PostRuta(RutaDto dto)
         {
             EsOrigen = d.EsOrigen,
             Orden = d.Orden,
-            PuntoVentaId = d.PuntoVenta.Id // o d.PuntoVentaId si lo defines en el DTO
+            PuntoVentaId = d.PuntoVentaId,
+            Tarifa = d.Tarifa
         }).ToList() ?? new List<Destino>()
     };
 
@@ -84,9 +85,9 @@ public async Task<ActionResult<Rutum>> PostRuta(RutaDto dto)
     return CreatedAtAction(nameof(GetRuta), new { id = ruta.Id }, ruta);
 }
 
-// PUT: api/rutas/5
+
 [HttpPut("{id}")]
-public async Task<IActionResult> PutRuta(int id, RutaDto dto)
+public async Task<IActionResult> PutRuta(int id, RutaWriteDto dto)
 {
     var ruta = await _context.Ruta
         .Include(r => r.Destinos)
@@ -100,7 +101,7 @@ public async Task<IActionResult> PutRuta(int id, RutaDto dto)
 
     var destinosExistentes = ruta.Destinos.ToList();
 
-    foreach (var destinoDto in dto.Destinos ?? new List<DestinoDto>())
+    foreach (var destinoDto in dto.Destinos ?? new List<DestinoWriteDto>())
     {
         var destinoExistente = destinosExistentes.FirstOrDefault(d => d.Id == destinoDto.Id);
 
@@ -108,7 +109,8 @@ public async Task<IActionResult> PutRuta(int id, RutaDto dto)
         {
             destinoExistente.EsOrigen = destinoDto.EsOrigen;
             destinoExistente.Orden = destinoDto.Orden;
-            destinoExistente.PuntoVentaId = destinoDto.PuntoVenta.Id; // o destinoDto.PuntoVentaId
+            destinoExistente.PuntoVentaId = destinoDto.PuntoVentaId;
+            destinoExistente.Tarifa = destinoDto.Tarifa;
         }
         else
         {
@@ -116,7 +118,8 @@ public async Task<IActionResult> PutRuta(int id, RutaDto dto)
             {
                 EsOrigen = destinoDto.EsOrigen,
                 Orden = destinoDto.Orden,
-                PuntoVentaId = destinoDto.PuntoVenta.Id
+                PuntoVentaId = destinoDto.PuntoVentaId,
+                Tarifa = destinoDto.Tarifa
             });
         }
     }
@@ -133,6 +136,7 @@ public async Task<IActionResult> PutRuta(int id, RutaDto dto)
     await _context.SaveChangesAsync();
     return Ok(ruta);
 }
+
 
 
         // DELETE: api/rutas/5

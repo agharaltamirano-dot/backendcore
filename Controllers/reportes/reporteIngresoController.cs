@@ -323,7 +323,7 @@ public async Task<IActionResult> XlsxResumen(
     s.Cell("A1").Style.Font.Bold = true;
     s.Cell("A1").Style.Font.FontSize = 16;
 
-    var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo9.png");
+    var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
     if (System.IO.File.Exists(logoPath))
         s.AddPicture(logoPath).MoveTo(s.Cell("H1")).WithSize(110, 70);
 
@@ -431,7 +431,7 @@ public async Task<IActionResult> XlsxDetallado(
     s.Cell("A1").Style.Font.Bold = true;
     s.Cell("A1").Style.Font.FontSize = 16;
 
-    var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo9.png");
+    var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
     if (System.IO.File.Exists(logoPath))
         s.AddPicture(logoPath).MoveTo(s.Cell("H1")).WithSize(110, 70);
 
