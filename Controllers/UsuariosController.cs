@@ -102,7 +102,7 @@ public async Task<IActionResult> PutUsuario(int id, Usuario usuario)
     if (usuario.Usuario1 != null)
         usuarioExistente.Usuario1 = usuario.Usuario1;
 
-    if (usuario.Clave != null)
+    if (usuario.Clave != null || usuario.Clave == string.Empty)
         usuarioExistente.Clave = usuario.Clave;
 
     if (usuario.Estado != null)
