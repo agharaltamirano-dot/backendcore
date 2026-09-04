@@ -228,6 +228,72 @@ public async Task<IActionResult> EntregarEncomienda(int id, [FromBody] String fe
         return StatusCode(500, new { mensaje = "Error interno al entregar la encomienda.", detalle = ex.Message });
     }
 }
+// POST: api/[controller]/asignar
+[HttpPost("asignar")]
+[Consumes("application/json")]
+public async Task<ActionResult> AsignarEnvios([FromBody] JsonElement raw)
+{
+    try
+    {
+        var rawText = raw.GetRawText();
+        System.Console.WriteLine("----- RAW BODY RECEIVED -----");
+        System.Console.WriteLine(rawText);
+
+        // Validamos que sea un objeto
+        if (raw.ValueKind == JsonValueKind.Object)
+        {
+            // Extraer propiedades directamente
+            int horarioId = raw.GetProperty("horario_id").GetInt32();
+            int conductorId = raw.GetProperty("conductor_id").GetInt32();
+            string fecha = raw.GetProperty("fecha").GetString();
+
+            var encomiendas = raw.GetProperty("encomiendas")
+                                 .EnumerateArray()
+                                 .Select(e => e.GetInt32())
+                                 .ToList();
+
+            if (encomiendas == null || !encomiendas.Any())
+                return BadRequest(new { mensaje = "Debe enviar al menos una encomienda." });
+
+            var results = new List<object>();
+
+            foreach (var encomiendaId in encomiendas)
+            {
+                try
+                {
+                    var envio = new Envio
+                    {
+                        ConductorId = conductorId,
+                        HorarioId = horarioId,
+                        EncomiendaId = encomiendaId,
+                        Fecha = fecha
+                    };
+
+                    _context.Envios.Add(envio);
+                    await _context.SaveChangesAsync();
+
+                    results.Add(new { ok = true, envioId = envio.Id, encomiendaId });
+                }
+                catch (Exception exItem)
+                {
+                    results.Add(new { ok = false, error = exItem.Message, encomiendaId });
+                }
+            }
+
+            return Ok(new { mensaje = "Procesado asignación", resultados = results });
+        }
+
+        return BadRequest(new { mensaje = "JSON recibido no es un objeto válido." });
+    }
+    catch (JsonException jex)
+    {
+        return BadRequest(new { mensaje = "JSON inválido.", detalle = jex.Message });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { mensaje = "Error interno procesando el JSON.", detalle = ex.Message });
+    }
+}
 
 
 

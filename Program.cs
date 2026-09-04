@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.FileProviders;
 using System.Text;
+using backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 // Configuración JWT
@@ -31,6 +32,9 @@ builder.Services.AddAuthorization();
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<TransporteContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("TransporteDb")));
+
+builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Registrar controladores
 builder.Services.AddControllers()

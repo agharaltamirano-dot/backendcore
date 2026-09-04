@@ -25,7 +25,7 @@ namespace backend.Controllers
         public async Task<ActionResult<IEnumerable<VehiculoListDto>>> GetVehiculos()
         {
             var list = await _context.Vehiculos
-                .Where(c => c.Estado == true)
+                // .Where(c => c.Estado == true)
                 .Include(v => v.Conductor)
                 .Include(v => v.Propietario)
                 .Include(v => v.Distribucion).ThenInclude(d => d.Asientos)

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using backend.Services;
 using System.Text.Json;
 
 namespace backend.Controllers
@@ -10,10 +11,12 @@ namespace backend.Controllers
     public class UsuariosController : ControllerBase
     {
         private readonly TransporteContext _context;
+        private readonly IEncryptionService _encryptionService;
 
-        public UsuariosController(TransporteContext context)
+        public UsuariosController(TransporteContext context, IEncryptionService encryptionService)
         {
             _context = context;
+            _encryptionService = encryptionService;
         }
 
   // GET: api/usuarios
@@ -83,6 +86,8 @@ public async Task<ActionResult<IEnumerable<object>>> GetUsuarios()
         public async Task<ActionResult<Usuario>> PostUsuario(Usuario usuario)
         {
             Console.WriteLine($"-----------------------Usuario llegando- CREAR----------------------------------: {JsonSerializer.Serialize(usuario)}----------");
+            if (!string.IsNullOrEmpty(usuario.Clave))
+                usuario.Clave = _encryptionService.Encrypt(usuario.Clave);
             _context.Usuarios.Add(usuario);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetUsuario), new { id = usuario.Id }, usuario);
@@ -103,7 +108,7 @@ public async Task<IActionResult> PutUsuario(int id, Usuario usuario)
         usuarioExistente.Usuario1 = usuario.Usuario1;
 
     if (usuario.Clave != null || usuario.Clave == string.Empty)
-        usuarioExistente.Clave = usuario.Clave;
+        usuarioExistente.Clave = _encryptionService.Encrypt(usuario.Clave);
 
     if (usuario.Estado != null)
         usuarioExistente.Estado = usuario.Estado;

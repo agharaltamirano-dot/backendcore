@@ -271,19 +271,23 @@ if (System.IO.File.Exists(logoPath))
                 // Listado de pasajes: 3 columnas (Nombre, CI, Teléfono)
                 var pasajes = await _context.Pasajes
                     .Include(pa => pa.Cliente)
-                    .Where(pa => pa.HorarioId == h.Id)
+                    .Include(pa => pa.Asiento)
+                    .Where(pa => pa.HorarioId == h.Id  && pa.Estado == true 
+                 && pa.Reserva == false)
                     .ToListAsync();
 
                 EnsureNewPageIfNeeded();
                 double tableLeft = left;
                 double tableRight = pageWidth - 10;
                 double tableWidth = tableRight - tableLeft;
-                double colWidth = tableWidth / 3.0;
+                double colWidth = tableWidth / 4.0;
 
                 // encabezados de columna
-                gfx.DrawString("Nombre", labelFont, XBrushes.Black, new XRect(tableLeft, y, colWidth, 20), XStringFormats.TopLeft);
-                gfx.DrawString("CI", labelFont, XBrushes.Black, new XRect(tableLeft + colWidth, y, colWidth, 20), XStringFormats.TopLeft);
-                gfx.DrawString("Teléfono", labelFont, XBrushes.Black, new XRect(tableLeft + 2 * colWidth, y, colWidth, 20), XStringFormats.TopLeft);
+                //primero el asiento
+                gfx.DrawString("Asiento", labelFont, XBrushes.Black, new XRect(tableLeft, y, colWidth, 20), XStringFormats.TopLeft);
+                gfx.DrawString("Nombre", labelFont, XBrushes.Black, new XRect(tableLeft + colWidth, y, colWidth, 20), XStringFormats.TopLeft);
+                gfx.DrawString("CI", labelFont, XBrushes.Black, new XRect(tableLeft + 2 * colWidth, y, colWidth, 20), XStringFormats.TopLeft);
+                gfx.DrawString("Teléfono", labelFont, XBrushes.Black, new XRect(tableLeft + 3 * colWidth, y, colWidth, 20), XStringFormats.TopLeft);
                 y += 14;
 
                 // filas de datos
@@ -294,9 +298,10 @@ if (System.IO.File.Exists(logoPath))
                     var ci = pa.Cliente?.Ci ?? string.Empty;
                     var tel = pa.Cliente?.Telefono ?? string.Empty;
 
-                    gfx.DrawString(nombre, valueFont, XBrushes.Black, new XRect(tableLeft, y, colWidth, 20), XStringFormats.TopLeft);
-                    gfx.DrawString(ci, valueFont, XBrushes.Black, new XRect(tableLeft + colWidth, y, colWidth, 20), XStringFormats.TopLeft);
-                    gfx.DrawString(tel, valueFont, XBrushes.Black, new XRect(tableLeft + 2 * colWidth, y, colWidth, 20), XStringFormats.TopLeft);
+                    gfx.DrawString(pa.Asiento?.Numero.ToString(), valueFont, XBrushes.Black, new XRect(tableLeft, y, colWidth, 20), XStringFormats.TopLeft);
+                    gfx.DrawString(nombre, valueFont, XBrushes.Black, new XRect(tableLeft + colWidth, y, colWidth, 20), XStringFormats.TopLeft);
+                    gfx.DrawString(ci, valueFont, XBrushes.Black, new XRect(tableLeft + 2 * colWidth, y, colWidth, 20), XStringFormats.TopLeft);
+                    gfx.DrawString(tel, valueFont, XBrushes.Black, new XRect(tableLeft + 3 * colWidth, y, colWidth, 20), XStringFormats.TopLeft);
                     y += 14;
                 }
 
