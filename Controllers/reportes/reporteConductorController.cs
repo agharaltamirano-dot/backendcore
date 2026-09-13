@@ -123,13 +123,57 @@ public async Task<IActionResult> Pdf(int conductorId, [FromQuery] string? fechaI
         }
         y += 22;
     }
-
     var total = r.Envios.Sum(e => e.Encomienda?.Monto ?? 0);
     var pagado = r.Envios.Where(e => e.Encomienda?.Pagado == true).Sum(e => e.Encomienda?.Monto ?? 0);
     var pendiente = r.Envios.Where(e => e.Encomienda?.Pagado == false).Sum(e => e.Encomienda?.Monto ?? 0);
 
     if (y + 18 > h - m) Page();
     g!.DrawString($"Resumen: Total Bs {total:N2} | Pagado Bs {pagado:N2} | Pendiente Bs {pendiente:N2}",
+        head, XBrushes.Black, new XRect(m, y + 3, w - 2 * m, 14), XStringFormats.TopLeft);
+
+    // --- Sección Pasajes (tabla + resumen) ---
+    y += 22;
+    if (y + 36 > h - m) Page();
+    // Título sección pasajes
+    g.DrawString("Pasajes", sub, XBrushes.Black, new XRect(m, y, w - 2 * m, 16), XStringFormats.TopLeft);
+    y += 18;
+
+    // Encabezado tabla pasajes
+    {
+        var x = m;
+        foreach (var c in PasajeCols())
+        {
+            g!.DrawRectangle(XBrushes.LightGray, x, y, c.W, 16);
+            g.DrawString(c.N, head, XBrushes.Black, new XRect(x + 2, y + 3, c.W - 4, 10), XStringFormats.TopLeft);
+            x += c.W;
+        }
+        y += 16;
+    }
+
+    // Filas de pasajes
+    foreach (var pasaje in r.Pasajes)
+    {
+        if (y + 22 > h - m) { Page(); g.DrawString("Pasajes", sub, XBrushes.Black, new XRect(m, y, w - 2 * m, 16), XStringFormats.TopLeft); y += 18; var xh = m; foreach (var c in PasajeCols()) { g!.DrawRectangle(XBrushes.LightGray, xh, y, c.W, 16); g.DrawString(c.N, head, XBrushes.Black, new XRect(xh + 2, y + 3, c.W - 4, 10), XStringFormats.TopLeft); xh += c.W; } y += 16; }
+        var x2 = m;
+        var pv = PasajeValues(pasaje);
+        foreach (var c in PasajeCols())
+        {
+            g!.DrawRectangle(XPens.LightGray, x2, y, c.W, 22);
+            var rect = new XRect(x2 + 2, y + 2, c.W - 4, 18);
+            var tf = new PdfSharpCore.Drawing.Layout.XTextFormatter(g);
+            tf.DrawString(pv[c.I], body, XBrushes.Black, rect, XStringFormats.TopLeft);
+            x2 += c.W;
+        }
+        y += 22;
+    }
+
+    // Resumen pasajes
+    var totalPasajes = r.Pasajes.Sum(p => (double)(p.Monto ?? 0));
+    var activosPasajes = r.Pasajes.Where(p => p.Estado == true).Sum(p => (double)(p.Monto ?? 0));
+    var anuladosPasajes = r.Pasajes.Where(p => p.Estado == false).Sum(p => (double)(p.Monto ?? 0));
+
+    if (y + 18 > h - m) Page();
+    g.DrawString($"Resumen Pasajes: Total Bs {totalPasajes:N2} | Activos Bs {activosPasajes:N2} | Anulados Bs {anuladosPasajes:N2}",
         head, XBrushes.Black, new XRect(m, y + 3, w - 2 * m, 14), XStringFormats.TopLeft);
 
     g?.Dispose();
@@ -163,15 +207,64 @@ public async Task<IActionResult> Pdf(int conductorId, [FromQuery] string? fechaI
             row++; 
         }
         
-        var total = r.Envios.Sum(e => e.Encomienda?.Monto ?? 0); 
-        var pagado = r.Envios.Where(e => e.Encomienda?.Pagado == true).Sum(e => e.Encomienda?.Monto ?? 0); 
-        var pendiente = r.Envios.Where(e => e.Encomienda?.Pagado == false).Sum(e => e.Encomienda?.Monto ?? 0); 
-        s.Range(row, 1, row, headers.Length).Merge(); 
-        s.Cell(row, 1).Value = $"Resumen: Total Bs {total:N2} | Pagado Bs {pagado:N2} | Pendiente Bs {pendiente:N2}"; 
-        s.Cell(row, 1).Style.Font.Bold = true; 
-        s.Cell(row, 1).Style.Fill.BackgroundColor = XLColor.LightGray; 
-        
-        ExcelEnd(s, row, headers.Length); 
+        var total = r.Envios.Sum(e => e.Encomienda?.Monto ?? 0);
+        var pagado = r.Envios.Where(e => e.Encomienda?.Pagado == true).Sum(e => e.Encomienda?.Monto ?? 0);
+        var pendiente = r.Envios.Where(e => e.Encomienda?.Pagado == false).Sum(e => e.Encomienda?.Monto ?? 0);
+        s.Range(row, 1, row, headers.Length).Merge();
+        s.Cell(row, 1).Value = $"Resumen Encomiendas: Total Bs {total:N2} | Pagado Bs {pagado:N2} | Pendiente Bs {pendiente:N2}";
+        s.Cell(row, 1).Style.Font.Bold = true;
+        s.Cell(row, 1).Style.Fill.BackgroundColor = XLColor.LightGray;
+
+        // --- Tabla Pasajes ---
+        row++;
+        s.Range(row, 1, row, headers.Length).Merge();
+        s.Cell(row, 1).Value = "Pasajes";
+        s.Cell(row, 1).Style.Font.Bold = true;
+        row++;
+
+        var pasajeHeaders = new[] { "Fecha/Hora", "Horario", "Cliente", "Destino", "Monto (Bs)", "Estado" };
+        for (var i = 0; i < pasajeHeaders.Length; i++) s.Cell(row, i + 1).Value = pasajeHeaders[i];
+        // estilo encabezado pasajes
+        var phRange = s.Range(row, 1, row, pasajeHeaders.Length);
+        phRange.Style.Font.Bold = true;
+        phRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+
+        row++;
+        foreach (var p in r.Pasajes)
+        {
+            var pv = PasajeValues(p);
+            for (var i = 0; i < pv.Length; i++) s.Cell(row, i + 1).Value = pv[i];
+            row++;
+        }
+
+        // Resumen pasajes como tabla (Total | Activos | Anulados)
+        var totalPasajes = r.Pasajes.Sum(p => (double)(p.Monto ?? 0));
+        var activosPasajes = r.Pasajes.Where(p => p.Estado == true).Sum(p => (double)(p.Monto ?? 0));
+        var anuladosPasajes = r.Pasajes.Where(p => p.Estado == false).Sum(p => (double)(p.Monto ?? 0));
+
+        // Encabezado de resumen
+        s.Cell(row, 1).Value = "Resumen Pasajes";
+        s.Cell(row, 1).Style.Font.Bold = true;
+        s.Cell(row, 2).Value = "Total Bs";
+        s.Cell(row, 3).Value = "Activos Bs";
+        s.Cell(row, 4).Value = "Anulados Bs";
+        var resumenHeader = s.Range(row, 1, row, 4);
+        resumenHeader.Style.Font.Bold = true;
+        resumenHeader.Style.Fill.BackgroundColor = XLColor.LightGray;
+        row++;
+
+        // Valores del resumen
+        s.Cell(row, 2).Value = totalPasajes;
+        s.Cell(row, 3).Value = activosPasajes;
+        s.Cell(row, 4).Value = anuladosPasajes;
+        s.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00";
+        s.Cell(row, 3).Style.NumberFormat.Format = "#,##0.00";
+        s.Cell(row, 4).Style.NumberFormat.Format = "#,##0.00";
+        s.Range(row - 1, 1, row, 1).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        s.Range(row - 1, 2, row, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+        row++;
+
+        ExcelEnd(s, row + 1, headers.Length);
         using var ms = new MemoryStream(); 
         book.SaveAs(ms); 
         return File(ms.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"reporte_conductor_{conductorId}.xlsx");
@@ -203,16 +296,46 @@ public async Task<IActionResult> Pdf(int conductorId, [FromQuery] string? fechaI
         if (destinoId.HasValue) f.Add($"Destino ID: {destinoId}"); 
         if (horarioId.HasValue) f.Add($"Horario ID: {horarioId}"); 
         
-        return new Result 
-        { 
+        // Consultar pasajes asociados al conductor (vía Horario -> Vehiculo -> Conductor)
+        var pq = _context.Pasajes.AsNoTracking()
+            .Include(p => p.Horario).ThenInclude(h => h.Vehiculo).ThenInclude(v => v.Conductor)
+            .Include(p => p.Cliente)
+            .AsQueryable();
+
+        pq = pq.Where(p => p.Horario != null && p.Horario!.Vehiculo != null && p.Horario!.Vehiculo!.ConductorId == conductorId);
+        if (horarioId.HasValue) pq = pq.Where(p => p.HorarioId == horarioId);
+        if (destinoId.HasValue) pq = pq.Where(p => p.Horario != null && p.Horario!.Ruta != null && p.Horario!.Ruta!.Destinos.Any(d => d.Id == destinoId));
+        if (inicio != null) pq = pq.Where(p => p.FechaHora != null && string.Compare(p.FechaHora, inicio + " 00:00") >= 0);
+        if (fin != null) pq = pq.Where(p => p.FechaHora != null && string.Compare(p.FechaHora, fin + " 23:59:59") <= 0);
+
+        var pasajes = await pq.OrderByDescending(p => p.FechaHora).ToListAsync();
+
+        return new Result
+        {
             Conductor = conductor,
-            Envios = await q.OrderByDescending(e => e.Fecha).ToListAsync(), 
-            Filtros = f 
+            Envios = await q.OrderByDescending(e => e.Fecha).ToListAsync(),
+            Pasajes = pasajes,
+            Filtros = f
         };
     }
-    private static string[] Values(Envio e) => [$"{e.Conductor?.Nombres} {e.Conductor?.Apellidos}".Trim(), e.Conductor?.Telefono ?? "", e.Conductor?.Licencia ?? "", e.Fecha ?? "", e.HorarioId?.ToString() ?? "", e.Encomienda?.Numero ?? "", e.Encomienda?.FechaRecepcion ?? "", e.Encomienda?.FechaEntrega ?? "", e.Encomienda?.Destino ?? "", e.Encomienda?.Contenido ?? "", (e.Encomienda?.Monto ?? 0).ToString("N2", CultureInfo.InvariantCulture), e.Encomienda?.Estado == true ? "Activo" : "Anulado", e.Encomienda?.Pagado == true ? "Sí" : "No"];
+    // Valores para la tabla de encomiendas — deben coincidir exactamente con `Cols()`
+    private static string[] Values(Envio e) => [
+        e.Fecha ?? "",
+        e.HorarioId?.ToString() ?? "",
+        e.Encomienda?.Numero ?? "",
+        e.Encomienda?.FechaRecepcion ?? "",
+        e.Encomienda?.FechaEntrega ?? "",
+        e.Encomienda?.Destino ?? "",
+        e.Encomienda?.Contenido ?? "",
+        (e.Encomienda?.Monto ?? 0).ToString("N2", CultureInfo.InvariantCulture),
+        e.Encomienda?.Estado == true ? "Activo" : "Anulado",
+        e.Encomienda?.Pagado == true ? "Sí" : "No"
+    ];
     private static string[] ValuesWithoutConductor(Envio e) => [e.Fecha ?? "", e.HorarioId?.ToString() ?? "", e.Encomienda?.Numero ?? "", e.Encomienda?.FechaRecepcion ?? "", e.Encomienda?.FechaEntrega ?? "", e.Encomienda?.Destino ?? "", e.Encomienda?.Contenido ?? "", (e.Encomienda?.Monto ?? 0).ToString("N2", CultureInfo.InvariantCulture), e.Encomienda?.Estado == true ? "Activo" : "Anulado", e.Encomienda?.Pagado == true ? "Sí" : "No"];
     private static (string N, double W, int I)[] Cols() => [("Fecha envío", 62, 0), ("Horario", 40, 1), ("Nro. encomienda", 72, 2), ("Recepción", 66, 3), ("Entrega", 66, 4), ("Destino", 58, 5), ("Contenido", 115, 6), ("Monto", 48, 7), ("Estado", 45, 8), ("Pagado", 45, 9)];
+    private static (string N, double W, int I)[] PasajeCols() => [("Fecha/Hora", 80, 0), ("Horario", 40, 1), ("Cliente", 120, 2), ("Destino", 80, 3), ("Monto (Bs)", 60, 4), ("Estado", 50, 5)];
+
+    private static string[] PasajeValues(Pasaje p) => [p.FechaHora ?? "", p.HorarioId?.ToString() ?? "", p.Cliente?.NombreCompleto ?? p.Movil ?? "", p.Destino ?? "", (p.Monto ?? 0).ToString("N2", CultureInfo.InvariantCulture), p.Estado == true ? "Activo" : "Anulado"];
     private static void ExcelHeader(IXLWorksheet s, string? usuario, List<string> filtros, Conductor? conductor = null) 
     { 
         s.Range("A1:F2").Merge(); 
@@ -239,5 +362,5 @@ public async Task<IActionResult> Pdf(int conductorId, [FromQuery] string? fechaI
         } 
     }
     private static void ExcelEnd(IXLWorksheet s, int row, int cols) { var r = s.Range(7, 1, 7, cols); r.Style.Font.Bold = true; r.Style.Fill.BackgroundColor = XLColor.LightGray; if (row > 8) s.Range(7, 1, row - 1, cols).Style.Border.OutsideBorder = XLBorderStyleValues.Thin; s.Columns(1, cols).AdjustToContents(); s.SheetView.FreezeRows(7); }
-    private sealed class Result { public Conductor? Conductor { get; set; } public List<Envio> Envios { get; set; } = []; public List<string> Filtros { get; set; } = []; public string? Error { get; set; } }
+    private sealed class Result { public Conductor? Conductor { get; set; } public List<Envio> Envios { get; set; } = []; public List<Pasaje> Pasajes { get; set; } = []; public List<string> Filtros { get; set; } = []; public string? Error { get; set; } }
 }

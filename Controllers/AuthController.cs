@@ -94,9 +94,9 @@ namespace backend.Controllers
         {
             try
             {
-                string usuario = raw.GetProperty("usuario").GetString() ?? string.Empty;
+                string usuario = raw.GetProperty("nombre").GetString() ?? string.Empty;
                 string correo = raw.GetProperty("correo").GetString() ?? string.Empty;
-
+Console.WriteLine($"-----------------------------Usuario: {usuario}, Correo: {correo}");
                 var usuarioDb = await _context.Usuarios.FirstOrDefaultAsync(u => u.Usuario1 == usuario);
                 if (usuarioDb == null)
                     return StatusCode(500, new { message = "Usuario no encontrado" });
@@ -115,6 +115,7 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Error enviando código: {ex}");
                 return StatusCode(500, new { message = "Error enviando código", detalle = ex.Message });
             }
         }
@@ -127,33 +128,54 @@ namespace backend.Controllers
             public string Code { get; set; }
             public DateTime Expiration { get; set; }
         }
-        [HttpPost("login/verify-code")]
+      [HttpPost("login/verify-code")]
 public async Task<IActionResult> VerifyLoginCode([FromBody] JsonElement raw)
 {
     try
     {
-        string usuario = raw.GetProperty("usuario").GetString() ?? string.Empty;
-        string codigo = raw.GetProperty("codigo").GetString() ?? string.Empty;
+        string usuario = raw.GetProperty("nombre").GetString() ?? string.Empty;
+        string codigo = raw.GetProperty("code").GetString() ?? string.Empty;
         string nuevaClave = raw.GetProperty("nuevaClave").GetString() ?? string.Empty;
 
+        Console.WriteLine($"[INFO] Verificando login code → usuario: {usuario}, codigo: {codigo}, nuevaClave: {nuevaClave}");
+
         if (!_codes.TryGetValue(usuario, out var entry))
+        {
+            Console.WriteLine($"[ERROR] No se encontró código para el usuario: {usuario}");
             return BadRequest(new { mensaje = "No se encontró código para este usuario" });
+        }
 
         if (entry.Expiration <= DateTime.UtcNow)
         {
+            Console.WriteLine($"[ERROR] Código expirado para usuario: {usuario}, expiración: {entry.Expiration}");
             _codes.TryRemove(usuario, out _);
             return BadRequest(new { mensaje = "El código ha expirado" });
         }
 
         if (entry.Code != codigo)
+        {
+            Console.WriteLine($"[ERROR] Código inválido para usuario: {usuario}. Esperado: {entry.Code}, recibido: {codigo}");
             return BadRequest(new { mensaje = "Código inválido" });
+        }
 
         var usuarioDb = await _context.Usuarios.FirstOrDefaultAsync(u => u.Usuario1 == usuario);
         if (usuarioDb == null)
+        {
+            Console.WriteLine($"[ERROR] Usuario no encontrado en base de datos: {usuario}");
             return BadRequest(new { mensaje = "Usuario no encontrado" });
+        }
 
-        usuarioDb.Clave = _encryptionService.Encrypt(nuevaClave);
-        await _context.SaveChangesAsync();
+        try
+        {
+            usuarioDb.Clave = _encryptionService.Encrypt(nuevaClave);
+            await _context.SaveChangesAsync();
+            Console.WriteLine($"[INFO] Contraseña actualizada correctamente para usuario: {usuario}");
+        }
+        catch (Exception exUpdate)
+        {
+            Console.WriteLine($"[ERROR] Fallo al actualizar contraseña en DB para usuario: {usuario}. Detalle: {exUpdate}");
+            return StatusCode(500, new { error = "Error actualizando contraseña", detalle = exUpdate.Message });
+        }
 
         // Código válido y usado, limpiar para que no se reutilice
         _codes.TryRemove(usuario, out _);
@@ -162,9 +184,11 @@ public async Task<IActionResult> VerifyLoginCode([FromBody] JsonElement raw)
     }
     catch (Exception ex)
     {
+        Console.WriteLine($"[FATAL] Error general verificando login code para usuario: {ex}");
         return StatusCode(500, new { error = "Error validando código", detalle = ex.Message });
     }
 }
+
         private string GenerateJwtToken(Usuario usuario)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));

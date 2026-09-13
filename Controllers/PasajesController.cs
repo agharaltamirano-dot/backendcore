@@ -60,6 +60,7 @@ namespace backend.Controllers
                 Movil = p.Movil,
                 Estado = p.Estado,
                 Destino = p.Destino,
+                Reserva = p.Reserva,
                 Asiento = p.Asiento == null ? null : new AsientoDto
                 {
                     Id = p.Asiento.Id,
@@ -408,6 +409,7 @@ public async Task<IActionResult> PutPasaje(int id, [FromBody] JsonElement raw)
         pasaje.HorarioId = dto.HorarioId;
         pasaje.UsuarioId = dto.UsuarioId;
         pasaje.ClienteId = clienteId;
+        pasaje.Reserva = dto.Reserva;
 
         await _context.SaveChangesAsync();
 

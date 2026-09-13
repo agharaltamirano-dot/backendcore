@@ -28,7 +28,9 @@ public class ReportesController : ControllerBase
 private async Task<(List<Pasaje> pasajes, List<Encomiendum> encomiendas)> BuscarDatos(
     int? usuarioId, string? fechaInicio, string? fechaFin, bool? estado)
 {
-    var pasajesQuery = _context.Pasajes.AsQueryable();
+    var pasajesQuery = _context.Pasajes.AsQueryable()
+        // Excluir pasajes que sean reservas (no deben sumarse en ningún reporte)
+        .Where(p => p.Reserva != true);
     var encomiendasQuery = _context.Encomienda.AsQueryable();
 
     if (usuarioId.HasValue)
@@ -37,22 +39,38 @@ private async Task<(List<Pasaje> pasajes, List<Encomiendum> encomiendas)> Buscar
         encomiendasQuery = encomiendasQuery.Where(e => e.UsuarioId == usuarioId);
     }
 
-    if (!string.IsNullOrEmpty(fechaInicio))
+        if (!string.IsNullOrEmpty(fechaInicio))
     {
         pasajesQuery = pasajesQuery.Where(p => p.FechaHora != null && string.Compare(p.FechaHora, fechaInicio) >= 0);
-        encomiendasQuery = encomiendasQuery.Where(e => e.FechaRecepcion != null && string.Compare(e.FechaRecepcion, fechaInicio) >= 0);
+        encomiendasQuery = encomiendasQuery.Where(e =>
+            // Excluir encomiendas sin entrega (null o cadena vacía) y sin pago
+            !(e.Pagado == false && (e.FechaEntrega == null || e.FechaEntrega == ""))
+            && (
+                // Si tiene FechaEntrega no vacía, usarla para filtrar
+                ((e.FechaEntrega != null && e.FechaEntrega != "") && string.Compare(e.FechaEntrega, fechaInicio + " 00:00") >= 0)
+                // Si no tiene FechaEntrega, usar FechaRecepcion
+                || ((e.FechaEntrega == null || e.FechaEntrega == "") && e.FechaRecepcion != null && string.Compare(e.FechaRecepcion, fechaInicio + " 00:00") >= 0)
+            )
+        );
     }
 
-    if (!string.IsNullOrEmpty(fechaFin))
+        if (!string.IsNullOrEmpty(fechaFin))
     {
         pasajesQuery = pasajesQuery.Where(p => p.FechaHora != null && string.Compare(p.FechaHora, fechaFin + " 23:59:59") <= 0);
-        encomiendasQuery = encomiendasQuery.Where(e => e.FechaRecepcion != null && string.Compare(e.FechaRecepcion, fechaFin + " 23:59:59") <= 0);
+        encomiendasQuery = encomiendasQuery.Where(e =>
+            !(e.Pagado == false && (e.FechaEntrega == null || e.FechaEntrega == ""))
+            && (
+                ((e.FechaEntrega != null && e.FechaEntrega != "") && string.Compare(e.FechaEntrega, fechaFin + " 23:59:59") <= 0)
+                || ((e.FechaEntrega == null || e.FechaEntrega == "") && e.FechaRecepcion != null && string.Compare(e.FechaRecepcion, fechaFin + " 23:59:59") <= 0)
+            )
+        );
     }
 
     if (estado.HasValue)
     {
         pasajesQuery = pasajesQuery.Where(p => p.Estado == estado);
-        encomiendasQuery = encomiendasQuery.Where(e => e.Estado == estado);
+        // aplicar estado pero también excluir los no pagados sin fecha de entrega (null o vacío)
+        encomiendasQuery = encomiendasQuery.Where(e => !(e.Pagado == false && (e.FechaEntrega == null || e.FechaEntrega == "")) && e.Estado == estado);
     }
 
     var pasajes = await pasajesQuery.Include(p => p.Usuario).ToListAsync();
@@ -83,7 +101,9 @@ public async Task<IActionResult> GetResumenJson(
             AnuladosPasajes = g.Where(p => p.Estado == false).Sum(p => p.Monto ?? 0)
         }).ToList();
 
-    var resumenEnc = encomiendas.GroupBy(e => DateTime.Parse(e.FechaRecepcion!).Date)
+    var resumenEnc = encomiendas
+        .Where(e => !(e.Pagado == false && (e.FechaEntrega == null || e.FechaEntrega == "")))
+        .GroupBy(e => DateTime.Parse(string.IsNullOrWhiteSpace(e.FechaEntrega) ? e.FechaRecepcion! : e.FechaEntrega!).Date)
         .Select(g => new {
             Fecha = g.Key.ToString("yyyy-MM-dd"),
             CantEncomiendas = g.Count(),
@@ -95,17 +115,17 @@ public async Task<IActionResult> GetResumenJson(
     // Unir por fecha
     var fechas = resumenPasajes.Select(r => r.Fecha).Union(resumenEnc.Select(r => r.Fecha)).OrderBy(f => f);
 
-    var resultado = fechas.Select(fecha => new {
-        Fecha = fecha,
-        CantPasajes = resumenPasajes.FirstOrDefault(r => r.Fecha == fecha)?.CantPasajes ?? 0,
-        CantEncomiendas = resumenEnc.FirstOrDefault(r => r.Fecha == fecha)?.CantEncomiendas ?? 0,
-        Total = (resumenPasajes.FirstOrDefault(r => r.Fecha == fecha)?.SumaPasajes ?? 0)
-              + (resumenEnc.FirstOrDefault(r => r.Fecha == fecha)?.SumaEncomiendas ?? 0),
-        Activos = (resumenPasajes.FirstOrDefault(r => r.Fecha == fecha)?.ActivosPasajes ?? 0)
-                + (resumenEnc.FirstOrDefault(r => r.Fecha == fecha)?.ActivosEnc ?? 0),
-        Anulados = (resumenPasajes.FirstOrDefault(r => r.Fecha == fecha)?.AnuladosPasajes ?? 0)
-                 + (resumenEnc.FirstOrDefault(r => r.Fecha == fecha)?.AnuladosEnc ?? 0)
-    }).ToList();
+        var resultado = fechas.Select(fecha => new {
+            Fecha = fecha,
+            CantPasajes = resumenPasajes.FirstOrDefault(r => r.Fecha == fecha)?.CantPasajes ?? 0,
+            CantEncomiendas = resumenEnc.FirstOrDefault(r => r.Fecha == fecha)?.CantEncomiendas ?? 0,
+            Total = (resumenPasajes.FirstOrDefault(r => r.Fecha == fecha)?.SumaPasajes ?? 0)
+                  + (resumenEnc.FirstOrDefault(r => r.Fecha == fecha)?.SumaEncomiendas ?? 0),
+            activosPasajes = resumenPasajes.FirstOrDefault(r => r.Fecha == fecha)?.ActivosPasajes ?? 0,
+            activosEncomiendas = resumenEnc.FirstOrDefault(r => r.Fecha == fecha)?.ActivosEnc ?? 0,
+            anuladosPasajes = resumenPasajes.FirstOrDefault(r => r.Fecha == fecha)?.AnuladosPasajes ?? 0,
+            anuladosEncomiendas = resumenEnc.FirstOrDefault(r => r.Fecha == fecha)?.AnuladosEnc ?? 0
+        }).ToList();
 
     return Ok(new { resumen = resultado });
 }
@@ -150,7 +170,9 @@ public async Task<IActionResult> GetResumenJson(
                 AnuladosPasajes = gp.Where(p => p.Estado == false).Sum(p => p.Monto ?? 0)
             }).ToList();
 
-        var resumenEnc = encomiendas.GroupBy(e => DateTime.Parse(e.FechaRecepcion).Date)
+        var resumenEnc = encomiendas
+            .Where(e => !(e.Pagado == false && (e.FechaEntrega == null || e.FechaEntrega == "")))
+            .GroupBy(e => DateTime.Parse(string.IsNullOrWhiteSpace(e.FechaEntrega) ? e.FechaRecepcion! : e.FechaEntrega!).Date)
             .Select(ge => new {
                 Fecha = ge.Key,
                 CantEncomiendas = ge.Count(),
@@ -229,21 +251,21 @@ public async Task<IActionResult> PdfDetallado(
 
     // Unir pasajes y encomiendas en un solo listado
     var registros = pasajes.Select(p => new RegistroReporte
-{
-    Fecha = DateTime.Parse(p.FechaHora!),
-    Tipo = "Pasaje",
-    Usuario = p.Usuario?.Usuario1 ?? "",
-    Estado = p.Estado,
-    Monto = (double)(p.Monto ?? 0)
-})
-.Concat(encomiendas.Select(e => new RegistroReporte
-{
-    Fecha = DateTime.Parse(e.FechaRecepcion!),
-    Tipo = "Encomienda",
-    Usuario = e.Usuario?.Usuario1 ?? "",
-    Estado = e.Estado,
-    Monto = e.Monto ?? 0
-}))
+    {
+        Fecha = DateTime.Parse(p.FechaHora!),
+        Tipo = "Pasaje",
+        Usuario = p.Usuario?.Usuario1 ?? "",
+        Estado = p.Estado,
+        Monto = (double)(p.Monto ?? 0)
+    })
+    .Concat(encomiendas.Select(e => new RegistroReporte
+    {
+        Fecha = DateTime.Parse(string.IsNullOrWhiteSpace(e.FechaEntrega) ? e.FechaRecepcion! : e.FechaEntrega!),
+        Tipo = "Encomienda",
+        Usuario = e.Usuario?.Usuario1 ?? "",
+        Estado = e.Estado,
+        Monto = e.Monto ?? 0
+    }))
 .OrderBy(r => r.Fecha)
 .ToList();
 
@@ -360,7 +382,9 @@ public async Task<IActionResult> XlsxResumen(
             AnuladosPasajes = g.Where(p => p.Estado == false).Sum(p => p.Monto ?? 0)
         }).ToList();
 
-    var resumenEnc = encomiendas.GroupBy(e => DateTime.Parse(e.FechaRecepcion!).Date)
+    var resumenEnc = encomiendas
+        .Where(e => !(e.Pagado == false && (e.FechaEntrega == null || e.FechaEntrega == "")))
+        .GroupBy(e => DateTime.Parse(string.IsNullOrWhiteSpace(e.FechaEntrega) ? e.FechaRecepcion! : e.FechaEntrega!).Date)
         .Select(g => new {
             Fecha = g.Key,
             CantEncomiendas = g.Count(),
