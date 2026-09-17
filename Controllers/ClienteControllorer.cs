@@ -48,6 +48,7 @@ var list = await _context.Clientes
                     Estado = c.Estado
                 })
                 .ToListAsync();
+                list.Reverse();
             return Ok(list);
         }
 

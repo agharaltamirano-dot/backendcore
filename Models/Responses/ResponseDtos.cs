@@ -158,6 +158,7 @@ public class RutaWriteDto
         public bool? Estado { get; set; }
         public RutaDto? Ruta { get; set; }
         public VehiculoListLiteDto? Vehiculo { get; set; }
+        public double? EncomiendasBs { get; set; }
         public List<PasajeListDto>? Pasajes { get; set; }
     }
 

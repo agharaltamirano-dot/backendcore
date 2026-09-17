@@ -75,9 +75,9 @@ namespace backend.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutPuntoVenta(int id, PuntoVentum puntoVenta)
         {
-            if (id != puntoVenta.Id)
-                return BadRequest();
-
+            // if (id != puntoVenta.Id)
+            //     return BadRequest();
+            puntoVenta.Id = id;
             _context.Entry(puntoVenta).State = EntityState.Modified;
 
             try

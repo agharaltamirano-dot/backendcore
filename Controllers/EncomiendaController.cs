@@ -218,6 +218,7 @@ public async Task<IActionResult> EntregarEncomienda(int id, [FromBody] String fe
 
         // Actualizar solo la fechaEntrega
         encomienda.FechaEntrega = fechaEntrega;
+        encomienda.Pagado = true;
 
         await _context.SaveChangesAsync();
 

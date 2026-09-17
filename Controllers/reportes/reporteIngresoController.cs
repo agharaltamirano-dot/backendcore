@@ -137,6 +137,13 @@ public async Task<IActionResult> GetResumenJson(
     {
         var (pasajes, encomiendas) = await BuscarDatos(usuarioId, fechaInicio, fechaFin, estado);
 
+        // Construir filtros visibles
+        var filtros = new List<string>();
+        if (usuarioId.HasValue) filtros.Add($"Usuario ID: {usuarioId}");
+        if (!string.IsNullOrEmpty(fechaInicio)) filtros.Add($"Fecha inicio: {fechaInicio}");
+        if (!string.IsNullOrEmpty(fechaFin)) filtros.Add($"Fecha fin: {fechaFin}");
+        if (estado.HasValue) filtros.Add($"Estado: {(estado.Value ? "Activo" : "Anulado")}");
+
         using var doc = new PdfDocument();
         var page = doc.AddPage();
         page.Size = PdfSharpCore.PageSize.Letter;
@@ -147,11 +154,24 @@ public async Task<IActionResult> GetResumenJson(
         var head = new XFont("Arial", 9, XFontStyle.Bold);
         var body = new XFont("Arial", 8, XFontStyle.Regular);
 
-        g.DrawString("Reporte resumido de ingresos", title, XBrushes.Black, new XRect(40, 40, page.Width, 30), XStringFormats.TopLeft);
+        // Logo a la izquierda (igual que reporteHorario)
+        var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
+        if (System.IO.File.Exists(logoPath))
+        {
+            using var img = XImage.FromFile(logoPath);
+            g.DrawImage(img, 40, 40, 70, 50);
+        }
+
+        // Título y metadatos
+        g.DrawString("Reporte resumido de ingresos", title, XBrushes.Black, new XRect(120, 40, page.Width - 160, 30), XStringFormats.TopLeft);
         g.DrawString($"Generado por: {nombreUsuario ?? "No especificado"}", body, XBrushes.Black, new XRect(page.Width - 250, 40, 200, 20), XStringFormats.TopRight);
         g.DrawString($"Fecha: {DateTime.Now:dd/MM/yyyy HH:mm}", body, XBrushes.Black, new XRect(page.Width - 250, 60, 200, 20), XStringFormats.TopRight);
 
-        int y = 100;
+        // Mostrar criterios (filtros) debajo del encabezado
+        var filtrosText = filtros.Count == 0 ? "Criterios: sin filtros" : "Criterios: " + string.Join(" | ", filtros);
+        g.DrawString(filtrosText, body, XBrushes.Black, new XRect(40, 100, page.Width - 80, 28), XStringFormats.TopLeft);
+
+        int y = 140;
         g.DrawString("Fecha", head, XBrushes.Black, new XRect(40, y, 80, 20), XStringFormats.TopLeft);
         g.DrawString("Cant. Pasajes", head, XBrushes.Black, new XRect(130, y, 100, 20), XStringFormats.TopLeft);
         g.DrawString("Cant. Encomiendas", head, XBrushes.Black, new XRect(240, y, 120, 20), XStringFormats.TopLeft);
@@ -224,7 +244,6 @@ public async Task<IActionResult> PdfDetallado(
     DateTime? ff = string.IsNullOrEmpty(fechaFin) ? null : DateTime.ParseExact(fechaFin, "yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     var (pasajes, encomiendas) = await BuscarDatos(usuarioId, fechaInicio, fechaFin, estado);
-
     using var doc = new PdfDocument();
     var page = doc.AddPage();
     page.Size = PdfSharpCore.PageSize.Letter;
@@ -235,12 +254,28 @@ public async Task<IActionResult> PdfDetallado(
     var head = new XFont("Arial", 9, XFontStyle.Bold);
     var body = new XFont("Arial", 8, XFontStyle.Regular);
 
-    // Encabezado
-    g.DrawString("Reporte detallado de ingresos", title, XBrushes.Black, new XRect(40, 40, page.Width, 30), XStringFormats.TopLeft);
+    // Logo a la izquierda y metadatos
+    var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
+    if (System.IO.File.Exists(logoPath))
+    {
+        using var img = XImage.FromFile(logoPath);
+        g.DrawImage(img, 40, 40, 70, 50);
+    }
+
+    g.DrawString("Reporte detallado de ingresos", title, XBrushes.Black, new XRect(120, 40, page.Width - 160, 30), XStringFormats.TopLeft);
     g.DrawString($"Generado por: {nombreUsuario ?? "No especificado"}", body, XBrushes.Black, new XRect(page.Width - 250, 40, 200, 20), XStringFormats.TopRight);
     g.DrawString($"Fecha: {DateTime.Now:dd/MM/yyyy HH:mm}", body, XBrushes.Black, new XRect(page.Width - 250, 60, 200, 20), XStringFormats.TopRight);
 
-    int y = 100;
+    // Construir filtros visibles
+    var filtros = new List<string>();
+    if (usuarioId.HasValue) filtros.Add($"Usuario ID: {usuarioId}");
+    if (!string.IsNullOrEmpty(fechaInicio)) filtros.Add($"Fecha inicio: {fechaInicio}");
+    if (!string.IsNullOrEmpty(fechaFin)) filtros.Add($"Fecha fin: {fechaFin}");
+    if (estado.HasValue) filtros.Add($"Estado: {(estado.Value ? "Activo" : "Anulado")}");
+
+    g.DrawString(filtros.Count == 0 ? "Criterios: sin filtros" : "Criterios: " + string.Join(" | ", filtros), body, XBrushes.Black, new XRect(40, 100, page.Width - 80, 28), XStringFormats.TopLeft);
+
+    int y = 140;
     g.DrawString("Fecha/Hora", head, XBrushes.Black, new XRect(40, y, 120, 20), XStringFormats.TopLeft);
     g.DrawString("Tipo", head, XBrushes.Black, new XRect(170, y, 60, 20), XStringFormats.TopLeft);
     g.DrawString("Usuario", head, XBrushes.Black, new XRect(240, y, 120, 20), XStringFormats.TopLeft);
@@ -339,15 +374,15 @@ public async Task<IActionResult> XlsxResumen(
     using var book = new XLWorkbook();
     var s = book.Worksheets.Add("Resumen");
 
-    // Encabezado
-    s.Range("A1:F2").Merge();
-    s.Cell("A1").Value = "Reporte resumido de ingresos";
-    s.Cell("A1").Style.Font.Bold = true;
-    s.Cell("A1").Style.Font.FontSize = 16;
+    // Encabezado: título a la derecha del logo
+    s.Range("C1:F2").Merge();
+    s.Cell("C1").Value = "Reporte resumido de ingresos";
+    s.Cell("C1").Style.Font.Bold = true;
+    s.Cell("C1").Style.Font.FontSize = 16;
 
     var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
     if (System.IO.File.Exists(logoPath))
-        s.AddPicture(logoPath).MoveTo(s.Cell("H1")).WithSize(110, 70);
+        s.AddPicture(logoPath).MoveTo(s.Cell("A1")).WithSize(110, 70);
 
     s.Range("F3:H3").Merge();
     s.Range("F4:H4").Merge();
@@ -450,14 +485,14 @@ public async Task<IActionResult> XlsxDetallado(
     var s = book.Worksheets.Add("Detallado");
 
     // Encabezado
-    s.Range("A1:F2").Merge();
-    s.Cell("A1").Value = "Reporte detallado de ingresos";
-    s.Cell("A1").Style.Font.Bold = true;
-    s.Cell("A1").Style.Font.FontSize = 16;
+    s.Range("C1:F2").Merge();
+    s.Cell("C1").Value = "Reporte detallado de ingresos";
+    s.Cell("C1").Style.Font.Bold = true;
+    s.Cell("C1").Style.Font.FontSize = 16;
 
     var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
     if (System.IO.File.Exists(logoPath))
-        s.AddPicture(logoPath).MoveTo(s.Cell("H1")).WithSize(110, 70);
+        s.AddPicture(logoPath).MoveTo(s.Cell("A1")).WithSize(110, 70);
 
     s.Range("F3:H3").Merge();
     s.Range("F4:H4").Merge();

@@ -128,6 +128,10 @@ public async Task<ActionResult<HorarioListDto>> GetHorario(int id)
 
     if (h == null) return NotFound();
 
+    var encomiendasBs = await _context.Envios
+        .Where(e => e.HorarioId == h.Id && e.Encomienda != null && e.Encomienda.Estado == true && e.Encomienda.Pagado == true)
+        .SumAsync(e => e.Encomienda!.Monto ?? 0);
+
     var dto = new HorarioListDto
     {
         Id = h.Id,
@@ -182,6 +186,7 @@ public async Task<ActionResult<HorarioListDto>> GetHorario(int id)
                 }).ToList()
             }
         },
+        EncomiendasBs = encomiendasBs,
         Pasajes = h.Pasajes == null ? null : h.Pasajes.Select(p => new PasajeListDto
         {
             Id = p.Id,
