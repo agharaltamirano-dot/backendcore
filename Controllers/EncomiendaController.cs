@@ -5,6 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using backend.Models.Responses;
 using System.Text.Json;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
+using System.Globalization;
+using Microsoft.AspNetCore.Authorization;
 
 namespace backend.Controllers
 {
@@ -295,6 +299,133 @@ public async Task<ActionResult> AsignarEnvios([FromBody] JsonElement raw)
         return StatusCode(500, new { mensaje = "Error interno procesando el JSON.", detalle = ex.Message });
     }
 }
+
+        // GET: api/encomienda/recibo/5
+        [HttpGet("recibo/{id}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetRecibo(int id)
+        {
+            try
+            {
+                var e = await _context.Encomienda
+                    .Include(x => x.ClienteRemitente)
+                    .Include(x => x.ClienteConsignatario)
+                    .Include(x => x.Usuario)
+                    .FirstOrDefaultAsync(x => x.Id == id);
+
+                if (e == null) return NotFound(new { mensaje = "Encomienda no encontrada." });
+
+                using var doc = new PdfDocument();
+                var page = doc.AddPage();
+                page.Width = XUnit.FromMillimeter(80); // ancho 80mm
+                page.Height = XUnit.FromMillimeter(220); // altura inicial
+
+                var gfx = XGraphics.FromPdfPage(page);
+                var titleFont = new XFont("Arial", 14, XFontStyle.Bold, new XPdfFontOptions(PdfFontEncoding.Unicode));
+                var subFont = new XFont("Arial", 12, XFontStyle.Bold, new XPdfFontOptions(PdfFontEncoding.Unicode));
+                var labelFont = new XFont("Arial", 9, XFontStyle.Bold, new XPdfFontOptions(PdfFontEncoding.Unicode));
+                var valueFont = new XFont("Arial", 9, XFontStyle.Regular, new XPdfFontOptions(PdfFontEncoding.Unicode));
+
+                double y = 10;
+                double left = 10;
+                double pageWidth = page.Width.Point;
+                double pageHeight = page.Height.Point;
+
+                void EnsureNewPageIfNeeded(double approxHeight)
+                {
+                    if (y + approxHeight > pageHeight - 10)
+                    {
+                        var newPage = doc.AddPage();
+                        newPage.Width = XUnit.FromMillimeter(80);
+                        newPage.Height = XUnit.FromMillimeter(220);
+                        pageHeight = newPage.Height.Point;
+                        pageWidth = newPage.Width.Point;
+                        gfx.Dispose();
+                        gfx = XGraphics.FromPdfPage(newPage);
+                        y = 10;
+                    }
+                }
+
+                // logo centrado arriba
+                var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo3.jpeg");
+                if (System.IO.File.Exists(logoPath))
+                {
+                    using var logo = XImage.FromFile(logoPath);
+                    double logoW = 60; double logoH = 60;
+                    double logoX = (pageWidth - logoW) / 2;
+                    gfx.DrawImage(logo, logoX, y, logoW, logoH);
+                    y += logoH + 6;
+                }
+
+                // Número grande
+                EnsureNewPageIfNeeded(40);
+                var numero = e.Numero ?? ("E-" + e.Id);
+                var wNum = gfx.MeasureString(numero, titleFont).Width;
+                gfx.DrawString(numero, titleFont, XBrushes.Black, new XRect((pageWidth - wNum) / 2, y, wNum, 24), XStringFormats.TopLeft);
+                y += 26;
+
+                // Subtítulo PAGADO / POR PAGAR
+                var pagadoTxt = e.Pagado == true ? "PAGADO" : "POR PAGAR";
+                var brush = e.Pagado == true ? XBrushes.Green : XBrushes.Red;
+                var wSub = gfx.MeasureString(pagadoTxt, subFont).Width;
+                gfx.DrawString(pagadoTxt, subFont, brush, new XRect((pageWidth - wSub) / 2, y, wSub, 22), XStringFormats.TopLeft);
+                y += 24;
+
+                // Helper para pares label/value
+                void DrawPair(string label, string value)
+                {
+                    EnsureNewPageIfNeeded(18);
+                    double labelW = 60;
+                    double valueLeft = left + labelW;
+                    double valueW = pageWidth - valueLeft - 10;
+                    gfx.DrawString(label, labelFont, XBrushes.Black, new XRect(left, y, labelW, 16), XStringFormats.TopLeft);
+                    gfx.DrawString(value ?? string.Empty, valueFont, XBrushes.Black, new XRect(valueLeft, y, valueW, 16), XStringFormats.TopLeft);
+                    y += 16;
+                }
+
+                // Remitente y consignatario
+                DrawPair("Remitente:", e.ClienteRemitente?.NombreCompleto);
+                DrawPair("Consignat:", e.ClienteConsignatario?.NombreCompleto);
+
+                // Estado
+                DrawPair("Estado:", e.Estado == true ? "Activa" : "Anulada");
+
+                // Fecha recepcion
+                DrawPair("Fecha:", e.FechaRecepcion);
+
+                // Contenido
+                DrawPair("Contenido:", e.Contenido);
+
+                // Destino
+                DrawPair("Destino:", e.Destino);
+
+                // Monto
+                var montoTxt = e.Monto == null ? string.Empty : (e.Monto.Value.ToString("N2", CultureInfo.InvariantCulture) + " Bs");
+                DrawPair("Monto:", montoTxt);
+
+                // Cajero (usuario)
+                string cajero = e.Usuario?.Usuario1;
+                if (string.IsNullOrEmpty(cajero) && e.UsuarioId.HasValue)
+                {
+                    var u = await _context.Usuarios.FindAsync(e.UsuarioId.Value);
+                    cajero = u?.Usuario1;
+                }
+                DrawPair("Cajero:", cajero);
+
+                using var ms = new MemoryStream();
+                doc.Save(ms, false);
+                ms.Position = 0;
+
+                Response.Headers["Content-Type"] = "application/pdf";
+                Response.Headers["Content-Disposition"] = $"inline; filename=\"recibo_encomienda_{e.Id}.pdf\"";
+                return File(ms.ToArray(), "application/pdf");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex);
+                return StatusCode(500, new { mensaje = "Error generando recibo.", detalle = ex.Message });
+            }
+        }
 
 
 
