@@ -248,8 +248,47 @@ public async Task<ActionResult<HorarioListDto>> GetHorario(int id)
         {
             if (id != horario.Id) return BadRequest();
 
-            _context.Entry(horario).State = EntityState.Modified;
+            var horarioExistente = await _context.Horarios
+                .FirstOrDefaultAsync(h => h.Id == id);
 
+            if (horarioExistente == null) return NotFound();
+
+            // Los asientos de un pasaje pertenecen a la distribución del vehículo.
+            // Al cambiarlo, se conserva cada pasaje vendido en la misma posición de
+            // matriz (fila y columna) de la nueva distribución.
+            if (horarioExistente.VehiculoId != horario.VehiculoId)
+            {
+                var pasajesVendidos = await _context.Pasajes
+                    .Where(p => p.HorarioId == id && p.Estado == true)
+                    .Include(p => p.Asiento)
+                    .ToListAsync();
+
+                if (pasajesVendidos.Count > 0)
+                {
+                    var nuevoVehiculo = await _context.Vehiculos
+                        .Include(v => v.Distribucion)
+                        .ThenInclude(d => d.Asientos)
+                        .FirstOrDefaultAsync(v => v.Id == horario.VehiculoId);
+
+                    var asientosPorPosicion = nuevoVehiculo?.Distribucion?.Asientos
+                        .GroupBy(a => (a.Fila, a.Columna))
+                        .ToDictionary(grupo => grupo.Key, grupo => grupo.First().Id);
+
+                    if (asientosPorPosicion == null || pasajesVendidos.Any(p =>
+                        p.Asiento == null ||
+                        !asientosPorPosicion.ContainsKey((p.Asiento.Fila, p.Asiento.Columna))))
+                    {
+                        return BadRequest(new { message = "los asientos no son equivalentes" });
+                    }
+
+                    foreach (var pasaje in pasajesVendidos)
+                    {
+                        pasaje.AsientoId = asientosPorPosicion[(pasaje.Asiento!.Fila, pasaje.Asiento.Columna)];
+                    }
+                }
+            }
+
+            _context.Entry(horarioExistente).CurrentValues.SetValues(horario);
             try
             {
                 await _context.SaveChangesAsync();
@@ -259,8 +298,7 @@ public async Task<ActionResult<HorarioListDto>> GetHorario(int id)
                 if (!_context.Horarios.Any(e => e.Id == id)) return NotFound();
                 else throw;
             }
-
-            return Ok(horario);
+            return Ok(horarioExistente);
         }
 
         // DELETE: api/horarios/5

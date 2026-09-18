@@ -363,6 +363,8 @@ public partial class TransporteContext : DbContext
             entity.Property(e => e.VisiblePasajes)
                 .HasDefaultValue(true)
                 .HasColumnName("visible_pasajes");
+            entity.Property(e => e.Tarifa)
+                .HasColumnName("tarifa");
         });
 
         modelBuilder.Entity<Rol>(entity =>

@@ -17,6 +17,8 @@ public partial class PuntoVentum
 
     public bool? EsPuntoVenta { get; set; }
 
+    public int? Tarifa { get; set; }
+
     public virtual ICollection<Destino> Destinos { get; set; } = new List<Destino>();
 
     public virtual ICollection<Usuario> Usuarios { get; set; } = new List<Usuario>();

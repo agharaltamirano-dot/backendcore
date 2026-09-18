@@ -31,7 +31,8 @@ namespace backend.Controllers
                     p.Direccion,
                     p.Telefono,
                     p.EsPuntoVenta,
-                    p.VisiblePasajes
+                    p.VisiblePasajes,
+                    p.Tarifa
                 })
                 .ToListAsync();
 
@@ -51,7 +52,8 @@ namespace backend.Controllers
                     p.Direccion,
                     p.Telefono,
                     p.EsPuntoVenta,
-                    p.VisiblePasajes
+                    p.VisiblePasajes,
+                    p.Tarifa
                 })
                 .FirstOrDefaultAsync();
 
